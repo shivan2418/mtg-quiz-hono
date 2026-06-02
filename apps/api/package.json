@@ -1,7 +1,10 @@
 {
-  "name": "apps",
+  "name": "api",
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "build": "tsc",
+    "dev": "bun run --hot src/index.ts",
+    "lint": "eslint src/",
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
@@ -10,9 +13,10 @@
     "pg": "^8.21.0"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "@types/bun": "latest",
     "@types/pg": "^8.20.0",
-    "drizzle-kit": "^0.31.10",
-    "tsx": "^4.22.4"
+    "drizzle-kit": "^0.31.10"
   }
 }
