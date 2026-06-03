@@ -4,7 +4,8 @@
     "build": "tsc",
     "dev": "bun run --hot src/index.ts",
     "lint": "eslint src/",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "seed": "bun run src/db/seed.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
