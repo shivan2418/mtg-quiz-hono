@@ -1,111 +1,102 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* MTG color palette — ported from tailwind.config.js OKLCH scale */
+  --mtg-green-50: oklch(0.98 0.02 145);
+  --mtg-green-100: oklch(0.95 0.04 145);
+  --mtg-green-200: oklch(0.88 0.08 145);
+  --mtg-green-300: oklch(0.78 0.13 145);
+  --mtg-green-400: oklch(0.68 0.18 145);
+  --mtg-green-500: oklch(0.58 0.22 145);
+  --mtg-green-600: oklch(0.48 0.20 145);
+  --mtg-green-700: oklch(0.38 0.16 145);
+  --mtg-green-800: oklch(0.28 0.12 145);
+  --mtg-green-900: oklch(0.18 0.07 145);
+  --mtg-green-950: oklch(0.10 0.04 145);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --mtg-blue-50: oklch(0.97 0.02 250);
+  --mtg-blue-100: oklch(0.94 0.04 250);
+  --mtg-blue-200: oklch(0.87 0.08 250);
+  --mtg-blue-300: oklch(0.77 0.13 250);
+  --mtg-blue-400: oklch(0.67 0.18 250);
+  --mtg-blue-500: oklch(0.57 0.22 250);
+  --mtg-blue-600: oklch(0.47 0.20 250);
+  --mtg-blue-700: oklch(0.37 0.16 250);
+  --mtg-blue-800: oklch(0.27 0.12 250);
+  --mtg-blue-900: oklch(0.17 0.07 250);
+  --mtg-blue-950: oklch(0.09 0.04 250);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --mtg-red-50: oklch(0.98 0.02 25);
+  --mtg-red-100: oklch(0.95 0.04 25);
+  --mtg-red-200: oklch(0.89 0.08 25);
+  --mtg-red-300: oklch(0.79 0.15 25);
+  --mtg-red-400: oklch(0.69 0.22 25);
+  --mtg-red-500: oklch(0.59 0.26 25);
+  --mtg-red-600: oklch(0.49 0.23 25);
+  --mtg-red-700: oklch(0.39 0.18 25);
+  --mtg-red-800: oklch(0.29 0.13 25);
+  --mtg-red-900: oklch(0.19 0.08 25);
+  --mtg-red-950: oklch(0.10 0.04 25);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --mtg-white-50: oklch(0.98 0.00 0);
+  --mtg-white-100: oklch(0.93 0.01 0);
+  --mtg-white-200: oklch(0.85 0.01 0);
+  --mtg-white-300: oklch(0.75 0.02 0);
+  --mtg-white-400: oklch(0.65 0.02 0);
+  --mtg-white-500: oklch(0.55 0.02 0);
+  --mtg-white-600: oklch(0.45 0.02 0);
+  --mtg-white-700: oklch(0.35 0.01 0);
+  --mtg-white-800: oklch(0.25 0.01 0);
+  --mtg-white-900: oklch(0.15 0.01 0);
+  --mtg-white-950: oklch(0.08 0.01 0);
+
+  /* App tokens */
+  --color-bg: var(--mtg-white-950);
+  --color-surface: var(--mtg-white-900);
+  --color-border: var(--mtg-white-800);
+  --color-text: var(--mtg-white-200);
+  --color-text-muted: var(--mtg-white-500);
+  --color-primary: var(--mtg-green-500);
+  --color-primary-hover: var(--mtg-green-400);
+  --color-danger: var(--mtg-red-500);
+  --color-success: var(--mtg-green-400);
+  --radius: 8px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100dvh;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+button {
+  cursor: pointer;
+  font: inherit;
+  border: none;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+input {
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  outline: none;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+input:focus {
+  border-color: var(--color-primary);
 }

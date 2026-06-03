@@ -1,5 +1,9 @@
 {
   "name": "api",
+  "exports": {
+    ".": "./src/index.ts",
+    "./app-type": "./src/app-type.ts"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "bun run --hot src/index.ts",
@@ -8,15 +12,19 @@
     "seed": "bun run src/db/seed.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.23",
+    "jsonwebtoken": "^9.0.2",
     "pg": "^8.21.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "@types/bcryptjs": "^3.0.0",
     "@types/bun": "latest",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10"
   }

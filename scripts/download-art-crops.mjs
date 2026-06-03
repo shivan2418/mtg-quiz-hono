@@ -15,6 +15,8 @@ const defaults = {
   includeSplit: false,
   includeTokens: false,
   limit: Number.POSITIVE_INFINITY,
+  manifest: null,
+  manifestOnly: false,
   outputDir: path.join(dataDir, "art-crops"),
   retries: 3,
 };
@@ -27,6 +29,8 @@ Downloads Scryfall art_crop images from the latest data/unique-artwork-*.json fi
 Options:
   --input <path>       Input JSON file. Defaults to latest data/unique-artwork-*.json
   --output <path>      Output directory. Defaults to data/art-crops
+  --manifest <path>    Manifest JSON path. Defaults to <output>/manifest.json
+  --manifest-only      Only write a manifest for images already in the output directory
   --limit <number>     Download at most this many art crops
   --delay-ms <number>  Delay after each download request. Defaults to ${defaults.delayMs}
   --retries <number>   Retry failed downloads this many times. Defaults to ${defaults.retries}
@@ -69,6 +73,11 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--manifest-only") {
+      options.manifestOnly = true;
+      continue;
+    }
+
     if (arg === "--input") {
       options.input = requiredValue(args, index, arg);
       index += 1;
@@ -77,6 +86,12 @@ function parseArgs(args) {
 
     if (arg === "--output") {
       options.outputDir = path.resolve(requiredValue(args, index, arg));
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--manifest") {
+      options.manifest = path.resolve(requiredValue(args, index, arg));
       index += 1;
       continue;
     }
@@ -196,8 +211,14 @@ function artCropEntries(card) {
       {
         cardId: card.id,
         filename: `${card.id}${extensionForUrl(topLevelUrl)}`,
+        layout: card.layout ?? "",
         name: card.name ?? "",
+        oracleId: card.oracle_id ?? "",
+        collectorNumber: card.collector_number ?? "",
         source: "card",
+        scryfallUri: card.scryfall_uri ?? "",
+        set: card.set ?? "",
+        setName: card.set_name ?? "",
         url: topLevelUrl,
       },
     ];
@@ -221,13 +242,41 @@ function artCropEntries(card) {
         cardId: card.id,
         faceIndex: index,
         filename: `${card.id}__face-${faceNumber}${extensionForUrl(faceUrl)}`,
+        layout: card.layout ?? "",
         name: card.name ?? "",
+        oracleId: card.oracle_id ?? "",
+        collectorNumber: card.collector_number ?? "",
         faceName: face.name ?? "",
         source: `face-${faceNumber}`,
+        scryfallUri: card.scryfall_uri ?? "",
+        set: card.set ?? "",
+        setName: card.set_name ?? "",
         url: faceUrl,
       },
     ];
   });
+}
+
+function manifestEntry(entry) {
+  return {
+    file: entry.filename,
+    cardId: entry.cardId,
+    oracleId: entry.oracleId,
+    name: entry.name,
+    faceName: entry.faceName ?? null,
+    displayName: entry.faceName ? `${entry.name} (${entry.faceName})` : entry.name,
+    source: entry.source,
+    layout: entry.layout,
+    set: entry.set,
+    setName: entry.setName,
+    collectorNumber: entry.collectorNumber,
+    scryfallUri: entry.scryfallUri,
+    artCropUrl: entry.url,
+  };
+}
+
+function addManifestEntry(manifest, entry) {
+  manifest.set(entry.filename, manifestEntry(entry));
 }
 
 function excludedReason(card, options) {
@@ -259,6 +308,19 @@ function extensionForUrl(url) {
     return path.extname(new URL(url).pathname).toLowerCase() || ".jpg";
   } catch {
     return ".jpg";
+  }
+}
+
+async function existingImageFiles(outputDir) {
+  try {
+    const files = await readdir(outputDir);
+    return new Set(files.filter((file) => /\.(jpe?g|png|webp)$/i.test(file)));
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return new Set();
+    }
+
+    throw error;
   }
 }
 
@@ -298,6 +360,14 @@ async function countArtCropTargets(input, options) {
 }
 
 function createProgressBar(total) {
+  if (total === 0) {
+    return {
+      clear() {},
+      increment() {},
+      finish() {},
+    };
+  }
+
   const width = 32;
   const stream = process.stderr;
   let current = 0;
@@ -445,19 +515,28 @@ async function main() {
   }
 
   const input = options.input ?? (await findLatestUniqueArtworkFile());
+  const manifestPath = options.manifest ?? path.join(options.outputDir, "manifest.json");
 
   if (!options.dryRun) {
     await mkdir(options.outputDir, { recursive: true });
+    await mkdir(path.dirname(manifestPath), { recursive: true });
   }
+
+  const existingImages = await existingImageFiles(options.outputDir);
 
   console.log(`Input: ${input}`);
   console.log(`Output: ${options.outputDir}`);
+  console.log(`Manifest: ${manifestPath}`);
   console.log("Names: <card-id>.jpg or <card-id>__face-N.jpg");
   console.log(
     `Filters: ${options.includeSplit ? "including" : "excluding"} split cards, ${options.includeTokens ? "including" : "excluding"} tokens`,
   );
 
-  const totalTargets = await countArtCropTargets(input, options);
+  if (options.manifestOnly) {
+    console.log("Mode: manifest only, no downloads");
+  }
+
+  const totalTargets = options.manifestOnly ? 0 : await countArtCropTargets(input, options);
   const progress = createProgressBar(totalTargets);
 
   const reader = readline.createInterface({
@@ -474,6 +553,7 @@ async function main() {
   let skipped = 0;
   let targets = 0;
   let lineNumber = 0;
+  const manifest = new Map();
 
   rows: for await (const line of reader) {
     lineNumber += 1;
@@ -485,12 +565,24 @@ async function main() {
 
     scanned += 1;
 
+    const entries = artCropEntries(card);
+
+    if (!options.dryRun) {
+      for (const entry of entries) {
+        if (existingImages.has(entry.filename)) {
+          addManifestEntry(manifest, entry);
+        }
+      }
+    }
+
+    if (options.manifestOnly) {
+      continue;
+    }
+
     if (excludedReason(card, options)) {
       excluded += 1;
       continue;
     }
-
-    const entries = artCropEntries(card);
 
     if (entries.length === 0) {
       missingArtCrop += 1;
@@ -507,6 +599,10 @@ async function main() {
 
       try {
         const result = await downloadArtCrop(entry, outputPath, options);
+
+        if (result === "downloaded" || result === "skipped") {
+          addManifestEntry(manifest, entry);
+        }
 
         if (result === "downloaded") {
           downloaded += 1;
@@ -535,8 +631,13 @@ async function main() {
 
   progress.finish({ downloaded, failed, skipped });
 
+  if (!options.dryRun) {
+    await writeFile(`${manifestPath}.tmp`, `${JSON.stringify([...manifest.values()], null, 2)}\n`);
+    await rename(`${manifestPath}.tmp`, manifestPath);
+  }
+
   console.log(
-    `Done. scanned=${scanned} targets=${targets} downloaded=${downloaded} skipped=${skipped} dryRun=${dryRun} excluded=${excluded} missingArtCrop=${missingArtCrop} failed=${failed}`,
+    `Done. scanned=${scanned} targets=${targets} downloaded=${downloaded} skipped=${skipped} dryRun=${dryRun} excluded=${excluded} missingArtCrop=${missingArtCrop} manifestEntries=${manifest.size} failed=${failed}`,
   );
 
   if (failed > 0) {

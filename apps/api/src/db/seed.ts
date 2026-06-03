@@ -1,5 +1,6 @@
 import { db } from './index';
 import { cards, users, quizzes, questions } from './schema';
+import { hash } from 'bcryptjs';
 
 async function seed() {
   // --- Cards ---
@@ -87,7 +88,7 @@ async function seed() {
     .values({
       email: 'admin@mtgquiz.com',
       name: 'Admin',
-      password: 'hashedpassword', // In production, hash this properly
+      password: await hash('admin123', 10),
       admin: true,
     })
     .returning();
