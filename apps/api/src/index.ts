@@ -6,12 +6,22 @@ import { auth } from './routes/auth';
 import { quizzesRoute as quizRoutes } from './routes/quizzes';
 import { autocomplete, autocompleteFuzzy } from './db/queries';
 import { formats } from './db/formats';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const setsPath = join(import.meta.dirname, '../../../data/set-card-counts.json');
+const setsData = JSON.parse(readFileSync(setsPath, 'utf8')).sets as {
+  code: string; name: string; year: string; totalCards: number; uniqueArtwork: number;
+}[];
 
 const app = new Hono()
   .route('/auth', auth)
   .route('/quizzes', quizRoutes)
   .get('/formats', (c) => {
     return c.json(formats);
+  })
+  .get('/sets', (c) => {
+    return c.json(setsData);
   })
   .get('/autocomplete', async (c) => {
     const q = c.req.query('q') ?? '';

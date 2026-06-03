@@ -3,7 +3,7 @@ import { db } from '../db';
 import { quizzes, questions, cards } from '../db/schema';
 import { eq, sql, and, isNotNull, inArray } from 'drizzle-orm';
 import { resolveUserId } from '../auth';
-import { defaultFormat, getFormat } from '../db/formats';
+import { getFormat } from '../db/formats';
 
 export const quizzesRoute = new Hono()
   .get('/', async (c) => {
@@ -52,27 +52,32 @@ export const quizzesRoute = new Hono()
   .post('/', async (c) => {
     const userId = await resolveUserId(c.req.header('Authorization'));
 
-    const { seed: rawSeed, formatId } = await c.req.json<{ seed?: number; formatId?: string }>();
+    const { seed: rawSeed, formatId, setCodes } = await c.req.json<{
+      seed?: number;
+      formatId?: string;
+      setCodes?: string[];
+    }>();
+
     const seed = rawSeed ?? Math.floor(Math.random() * 100000);
-    const fmt = getFormat(formatId ?? defaultFormat.id) ?? defaultFormat;
+    const codes = setCodes ?? getFormat(formatId ?? 'classic')?.setCodes ?? ['lea', 'leb'];
 
     const cardRows = await db
       .select()
       .from(cards)
-      .where(inArray(cards.set, fmt.setCodes))
+      .where(inArray(cards.set, codes))
       .orderBy(sql`RANDOM()`)
       .limit(30);
 
     if (cardRows.length === 0) {
       return c.json(
-        { error: `No cards found for format "${fmt.name}". Run the seed script.` },
+        { error: `No cards found for the selected sets. Run the seed script.` },
         400,
       );
     }
 
     const [quiz] = await db
       .insert(quizzes)
-      .values({ seed, format: fmt.id, questionCount: cardRows.length, completed: false, userId })
+      .values({ seed, format: formatId ?? 'custom', questionCount: cardRows.length, completed: false, userId })
       .returning();
     if (!quiz) return c.json({ error: 'Failed to create quiz' }, 500);
 

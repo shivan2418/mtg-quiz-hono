@@ -37,20 +37,22 @@ async function seed() {
   console.log(`\nFormats: ${formats.map((f) => `${f.name} (${f.setCodes.length} sets)`).join(', ')}`);
   console.log(`Target sets: ${allSets.size} — ${[...allSets].join(', ')}`);
 
-  // Deduplicate: one row per unique card name (using the first English printing)
+  // Insert one row per (name, set, collector_number) — each printing
   const seen = new Set<string>();
   const cardData: { title: string; file: string; set: string; year: number }[] = [];
   const setsFound = new Set<string>();
 
   for (const c of allCards) {
     if (!allSets.has(c.set)) continue;
+    if (c.lang !== 'en') continue;
     setsFound.add(c.set);
-    const title = c.name;
-    if (seen.has(title)) continue;
-    seen.add(title);
+
+    const key = `${c.name}|${c.set}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
 
     cardData.push({
-      title,
+      title: c.name,
       file: c.image_uris?.art_crop ?? c.image_uris?.png ?? '',
       set: c.set,
       year: parseInt(c.released_at?.slice(0, 4) ?? '1993'),
