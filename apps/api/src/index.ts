@@ -27,7 +27,10 @@ const app = new Hono()
     const correct =
       question.answer.toLowerCase().trim() === answer.toLowerCase().trim();
 
-    return c.json({ correct });
+    if (correct) {
+      return c.json({ correct: true });
+    }
+    return c.json({ correct: false, correctAnswer: question.answer });
   });
 
 export default app;

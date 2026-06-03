@@ -1,16 +1,25 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { client } from "@/api";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Card } from "@/components/card";
+
+type Feedback =
+  | null
+  | { kind: "correct" }
+  | { kind: "wrong"; correctAnswer: string };
 
 export function Quiz() {
   const { quizId } = useParams<{ quizId: string }>();
   const id = Number(quizId);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
+  const [score, setScore] = useState(0);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [finished, setFinished] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: quiz } = useQuery({
     queryKey: ["quiz", id],
@@ -32,6 +41,18 @@ export function Quiz() {
     },
   });
 
+  const advance = () => {
+    if (questions && index < questions.length - 1) {
+      setIndex((i) => i + 1);
+      setAnswer("");
+      setFeedback(null);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    } else {
+      setFinished(true);
+      setFeedback(null);
+    }
+  };
+
   const submit = useMutation({
     mutationFn: async (questionId: number) => {
       const res = await client.answer.$post({
@@ -40,10 +61,13 @@ export function Quiz() {
       return res.json();
     },
     onSuccess: (data) => {
-      if ("correct" in data && data.correct && questions && index < questions.length - 1) {
-        setIndex((i) => i + 1);
-        setAnswer("");
+      if ("correct" in data && data.correct) {
+        setScore((s) => s + 1);
+        setFeedback({ kind: "correct" });
+      } else if ("correctAnswer" in data) {
+        setFeedback({ kind: "wrong", correctAnswer: data.correctAnswer });
       }
+      setTimeout(advance, 1500);
     },
   });
 
@@ -54,21 +78,30 @@ export function Quiz() {
     return <p className="text-mtg-white-500">No questions found.</p>;
   }
 
-  const current = questions[index];
-  if (!current)
+  if (finished) {
     return (
       <div className="text-center mt-12">
         <h2 className="text-mtg-green-400 text-2xl font-bold mb-2">
           Quiz Complete!
         </h2>
-        <p className="text-mtg-white-500">
-          Score:{" "}
-          {quiz && "score" in quiz
-            ? (quiz as unknown as { score: number | null }).score
-            : "—"}
+        <p className="text-mtg-white-200 text-lg mt-2">
+          {score} / {questions.length} correct
+        </p>
+        <p className="text-mtg-white-500 mt-1">
+          {score === questions.length
+            ? "Perfect score!"
+            : score >= questions.length / 2
+              ? "Well played!"
+              : "Keep practicing!"}
         </p>
       </div>
     );
+  }
+
+  const current = questions[index];
+  if (!current) return null;
+
+  const isPending = submit.isPending || !!feedback;
 
   return (
     <div>
@@ -93,27 +126,36 @@ export function Quiz() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (isPending) return;
           submit.mutate(current.id);
         }}
         className="flex gap-2"
       >
         <Input
+          ref={inputRef}
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
           placeholder="Card name…"
           autoFocus
+          disabled={isPending}
           className="flex-1"
         />
-        <Button type="submit" disabled={submit.isPending || !answer.trim()}>
+        <Button type="submit" disabled={isPending || !answer.trim()}>
           {submit.isPending ? "…" : "Submit"}
         </Button>
       </form>
 
-      {submit.isError && (
-        <p className="text-mtg-red-400 mt-3">Wrong answer, try again.</p>
+      {feedback?.kind === "correct" && (
+        <p className="text-mtg-green-400 mt-3 font-medium">Correct!</p>
       )}
-      {submit.isSuccess && "correct" in submit.data && submit.data.correct && (
-        <p className="text-mtg-green-400 mt-3">Correct!</p>
+      {feedback?.kind === "wrong" && (
+        <p className="text-mtg-red-400 mt-3 font-medium">
+          Wrong — it was <span className="text-mtg-white-300">{feedback.correctAnswer}</span>
+        </p>
+      )}
+
+      {submit.isError && !feedback && (
+        <p className="text-mtg-red-400 mt-3">Something went wrong. Try again.</p>
       )}
     </div>
   );
