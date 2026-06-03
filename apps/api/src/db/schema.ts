@@ -1,21 +1,5 @@
-import { pgTable, serial, timestamp, text, boolean, integer, pgEnum, index, uuid, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, timestamp, text, boolean, integer, index, uuid, jsonb } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-
-// --- Enums ---
-
-export const setEnum = pgEnum('Set', [
-  'ALPHA',
-  'BETA',
-  'UNLIMITED',
-  'REVISED',
-  'FOURTH_EDITION',
-  'FIFTH_EDITION',
-  'SIXTH_EDITION',
-  'SEVENTH_EDITION',
-  'EIGHTH_EDITION',
-  'NINTH_EDITION',
-  'TENTH_EDITION',
-]);
 
 // --- Tables ---
 
@@ -36,6 +20,7 @@ export const quizzes = pgTable('Quiz', {
   createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   seed: integer('seed').notNull(),
+  format: text('format').notNull().default('classic'),
   questionCount: integer('questionCount').default(30).notNull(),
   currentIndex: integer('currentIndex').default(0).notNull(),
   completed: boolean('completed').default(false).notNull(),
@@ -69,7 +54,7 @@ export const cards = pgTable('Card', {
   updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   title: text('title').notNull(),
   file: text('file').notNull().default(''),
-  set: setEnum('set').notNull(),
+  set: text('set').notNull(),
   year: integer('year').notNull(),
   titleNorm: text('title_norm').generatedAlwaysAs(
     (): any => sql`lower(immutable_unaccent(${cards.title}))`,

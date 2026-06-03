@@ -63,14 +63,16 @@ export function Quiz() {
     setAnswer(title);
     setOpen(false);
     setHighlightIndex(-1);
+    submit.mutate(title);
   };
 
   const submit = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (overrideAnswer: string | undefined) => {
+      const effectiveAnswer = overrideAnswer ?? answer;
       const q = questions?.[quiz && "currentIndex" in quiz ? (quiz as { currentIndex: number }).currentIndex : 0];
       if (!q) throw new Error("No question");
       const res = await client.answer.$post({
-        json: { quizId: id, questionId: q.id, answer },
+        json: { quizId: id, questionId: q.id, answer: effectiveAnswer },
       });
       return { data: await res.json(), question: q };
     },
@@ -154,7 +156,7 @@ export function Quiz() {
         onSubmit={(e) => {
           e.preventDefault();
           if (isPending) return;
-          submit.mutate();
+          submit.mutate(undefined);
         }}
         className="flex gap-2"
       >
@@ -168,12 +170,12 @@ export function Quiz() {
               setHighlightIndex(-1);
             }}
             onFocus={() => {
-              if (suggestions.length > 0) setOpen(true);
+              if (suggestions.length > 0 && answer.trim()) setOpen(true);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && e.ctrlKey) {
                 e.preventDefault();
-                if (!submit.isPending && answer.trim()) submit.mutate();
+                if (!submit.isPending && answer.trim()) submit.mutate(undefined);
                 return;
               }
               if (!open || suggestions.length === 0) return;
@@ -225,7 +227,7 @@ export function Quiz() {
           variant="secondary"
           disabled={isPending}
           onClick={() => {
-            submit.mutate();
+            submit.mutate(undefined);
           }}
         >
           Skip

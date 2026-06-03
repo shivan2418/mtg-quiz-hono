@@ -2,115 +2,66 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { db } from './index';
-import { cards, users, quizzes, questions } from './schema';
+import { cards, users } from './schema';
 import { hash } from 'bcryptjs';
+import { formats } from './formats';
 
-const questionCount = 30;
-const defaultImageStaticBaseUrl = '/art-crops';
-
-type AlphaBetaManifestEntry = {
-  file: string;
-  name: string;
-  set: 'lea' | 'leb';
-};
-
-function alphaBetaManifestPath() {
-  if (process.env.ALPHA_BETA_MANIFEST_PATH) {
-    return process.env.ALPHA_BETA_MANIFEST_PATH;
-  }
-
+function bulkDataPath() {
+  if (process.env.BULK_DATA_PATH) return process.env.BULK_DATA_PATH;
   const seedDir = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.resolve(seedDir, '../../../..');
-
-  return path.join(repoRoot, 'data/art-crops/alpha-beta-manifest.json');
+  return path.join(repoRoot, 'data/default-cards-20260602090812.json');
 }
 
-function loadAlphaBetaCards() {
-  const manifestPath = alphaBetaManifestPath();
-  const manifest = JSON.parse(
-    readFileSync(manifestPath, 'utf8'),
-  ) as AlphaBetaManifestEntry[];
-  const byName = new Map<string, AlphaBetaManifestEntry>();
-
-  for (const entry of manifest) {
-    if (entry.set !== 'lea' && entry.set !== 'leb') continue;
-
-    const existing = byName.get(entry.name);
-    if (!existing || (entry.set === 'lea' && existing.set !== 'lea')) {
-      byName.set(entry.name, entry);
-    }
-  }
-
-  return [...byName.values()];
-}
-
-function quizSeed() {
-  if (!process.env.SEED_QUIZ_SEED) {
-    return Math.floor(Math.random() * 1_000_000_000);
-  }
-
-  const seed = Number(process.env.SEED_QUIZ_SEED);
-  if (!Number.isInteger(seed)) {
-    throw new Error('SEED_QUIZ_SEED must be an integer');
-  }
-
-  return seed;
-}
-
-function sampleCards(
-  sourceCards: AlphaBetaManifestEntry[],
-  count: number,
-  seed: number,
-) {
-  if (sourceCards.length < count) {
-    throw new Error(
-      `Need ${count} Alpha/Beta cards with downloaded images, found ${sourceCards.length}`,
-    );
-  }
-
-  const random = seededRandom(seed);
-  const shuffled = [...sourceCards];
-
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    const current = shuffled[index]!;
-    shuffled[index] = shuffled[swapIndex]!;
-    shuffled[swapIndex] = current;
-  }
-
-  return shuffled.slice(0, count);
-}
-
-function seededRandom(seed: number) {
-  let value = seed >>> 0;
-
-  return () => {
-    value += 0x6d2b79f5;
-    let next = value;
-    next = Math.imul(next ^ (next >>> 15), next | 1);
-    next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
-    return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function imageUrlFor(file: string) {
-  const baseUrl = process.env.IMAGE_STATIC_BASE_URL ?? defaultImageStaticBaseUrl;
-  return `${baseUrl.replace(/\/+$/, '')}/${file}`;
+interface ScryfallCard {
+  id: string;
+  name: string;
+  set: string;
+  released_at: string;
+  image_uris?: { png?: string; large?: string };
 }
 
 async function seed() {
-  const seedValue = quizSeed();
-  const alphaBetaCards = loadAlphaBetaCards();
-  const quizCards = sampleCards(alphaBetaCards, questionCount, seedValue);
+  console.log('Loading bulk data...');
+  const raw = readFileSync(bulkDataPath(), 'utf8');
+  const allCards: ScryfallCard[] = JSON.parse(raw);
+  console.log(`Loaded ${allCards.length} cards`);
+
+  // Collect all set codes from all formats
+  const allSets = new Set<string>();
+  for (const fmt of formats) {
+    for (const code of fmt.setCodes) {
+      allSets.add(code);
+    }
+  }
+  console.log(`\nFormats: ${formats.map((f) => `${f.name} (${f.setCodes.length} sets)`).join(', ')}`);
+  console.log(`Target sets: ${allSets.size} — ${[...allSets].join(', ')}`);
+
+  // Deduplicate: one row per unique card name (using the first English printing)
+  const seen = new Set<string>();
+  const cardData: { title: string; file: string; set: string; year: number }[] = [];
+  const setsFound = new Set<string>();
+
+  for (const c of allCards) {
+    if (!allSets.has(c.set)) continue;
+    setsFound.add(c.set);
+    const title = c.name;
+    if (seen.has(title)) continue;
+    seen.add(title);
+
+    cardData.push({
+      title,
+      file: c.image_uris?.png ?? c.image_uris?.large ?? '',
+      set: c.set,
+      year: parseInt(c.released_at?.slice(0, 4) ?? '1993'),
+    });
+  }
+
+  console.log(`Sets found: ${[...setsFound].sort().join(', ')}`);
+  console.log(`Unique cards to seed: ${cardData.length}`);
 
   // --- Cards ---
-  console.log(`Seeding ${alphaBetaCards.length} cards from manifest...`);
-  const cardData = alphaBetaCards.map((entry) => ({
-    title: entry.name,
-    file: entry.file,
-    set: (entry.set === 'lea' ? 'ALPHA' : 'BETA') as typeof cards.$inferSelect.set,
-    year: 1993,
-  }));
+  console.log(`\nInserting ${cardData.length} cards...`);
   await db.insert(cards).values(cardData);
 
   // --- User ---
@@ -126,32 +77,8 @@ async function seed() {
     .returning();
   if (!user) throw new Error('Failed to create user');
 
-  // --- Quiz ---
-  console.log('Seeding quiz...');
-  const [quiz] = await db
-    .insert(quizzes)
-    .values({
-      seed: seedValue,
-      questionCount,
-      completed: false,
-      userId: user.id,
-    })
-    .returning();
-  if (!quiz) throw new Error('Failed to create quiz');
-
-  // --- Questions ---
-  console.log(`Seeding ${questionCount} Alpha/Beta questions...`);
-  console.log(
-    `Using image static base URL: ${process.env.IMAGE_STATIC_BASE_URL ?? defaultImageStaticBaseUrl}`,
-  );
-  const questionData: { imageUrl: string; answer: string; quizId: string }[] =
-    quizCards.map((card) => ({
-      imageUrl: imageUrlFor(card.file),
-      answer: card.name,
-      quizId: quiz.id,
-    }));
-  await db.insert(questions).values(questionData);
-
+  // --- Sample Quiz ---
+  console.log(`User created: ${user.email}`);
   console.log('Seed complete.');
   process.exit(0);
 }

@@ -5,10 +5,14 @@ import { eq, sql } from 'drizzle-orm';
 import { auth } from './routes/auth';
 import { quizzesRoute as quizRoutes } from './routes/quizzes';
 import { autocomplete, autocompleteFuzzy } from './db/queries';
+import { formats } from './db/formats';
 
 const app = new Hono()
   .route('/auth', auth)
   .route('/quizzes', quizRoutes)
+  .get('/formats', (c) => {
+    return c.json(formats);
+  })
   .get('/autocomplete', async (c) => {
     const q = c.req.query('q') ?? '';
     const fuzzy = c.req.query('fuzzy') === '1';

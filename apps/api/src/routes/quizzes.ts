@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { db } from '../db';
 import { quizzes, questions, cards } from '../db/schema';
-import { eq, sql, and, isNotNull } from 'drizzle-orm';
+import { eq, sql, and, isNotNull, inArray } from 'drizzle-orm';
 import { verifyToken } from '../auth';
+import { defaultFormat, getFormat } from '../db/formats';
 
 export const quizzesRoute = new Hono()
   .get('/', async (c) => {
     const userId = c.req.query('userId');
+    const format = c.req.query('format');
     let query = db.select().from(quizzes);
 
     if (userId) {
@@ -16,6 +18,10 @@ export const quizzesRoute = new Hono()
           isNotNull(quizzes.userId),
         ),
       ) as typeof query;
+    }
+
+    if (format) {
+      query = query.where(eq(quizzes.format, format)) as typeof query;
     }
 
     const result = await query;
@@ -51,33 +57,37 @@ export const quizzesRoute = new Hono()
       if (payload) userId = payload.id;
     }
 
-    const { seed: rawSeed } = await c.req.json<{ seed?: number }>();
+    const { seed: rawSeed, formatId } = await c.req.json<{ seed?: number; formatId?: string }>();
     const seed = rawSeed ?? Math.floor(Math.random() * 100000);
+    const fmt = getFormat(formatId ?? defaultFormat.id) ?? defaultFormat;
 
     const cardRows = await db
       .select()
       .from(cards)
+      .where(inArray(cards.set, fmt.setCodes))
       .orderBy(sql`RANDOM()`)
-      .limit(5);
+      .limit(30);
 
     if (cardRows.length === 0) {
       return c.json(
-        { error: 'No cards in database. Run the seed script.' },
+        { error: `No cards found for format "${fmt.name}". Run the seed script.` },
         400,
       );
     }
 
-    const imageBaseUrl = (process.env.IMAGE_STATIC_BASE_URL ?? '/art-crops').replace(/\/+$/, '');
-
     const [quiz] = await db
       .insert(quizzes)
-      .values({ seed, questionCount: cardRows.length, completed: false, userId })
+      .values({ seed, format: fmt.id, questionCount: cardRows.length, completed: false, userId })
       .returning();
     if (!quiz) return c.json({ error: 'Failed to create quiz' }, 500);
 
+    const imageBaseUrl = (process.env.IMAGE_STATIC_BASE_URL ?? '/art-crops').replace(/\/+$/, '');
+
     await db.insert(questions).values(
       cardRows.map((card) => ({
-        imageUrl: `${imageBaseUrl}/${card.file}`,
+        imageUrl: card.file.startsWith('http')
+          ? card.file
+          : `${imageBaseUrl}/${card.file}`,
         answer: card.title,
         quizId: quiz.id,
       })),
