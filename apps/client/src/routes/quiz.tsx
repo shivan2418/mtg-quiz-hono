@@ -1,5 +1,5 @@
 import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { client } from "@/api";
 import { useState, useRef, useEffect } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
@@ -12,6 +12,13 @@ type Feedback =
   | { kind: "correct" }
   | { kind: "wrong"; correctAnswer: string };
 
+interface Result {
+  guess: string | null;
+  correct: boolean;
+  correctAnswer: string;
+  imageUrl: string;
+}
+
 export function Quiz() {
   const { quizId } = useParams<{ quizId: string }>();
   const id = Number(quizId);
@@ -22,6 +29,7 @@ export function Quiz() {
   const [finished, setFinished] = useState(false);
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
+  const resultsRef = useRef<Result[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +86,33 @@ export function Quiz() {
     }
   };
 
+  const recordResult = (correct: boolean, correctAnswer: string) => {
+    const q = questions?.[index];
+    resultsRef.current = [
+      ...resultsRef.current,
+      {
+        guess: answer || null,
+        correct,
+        correctAnswer,
+        imageUrl: q?.imageUrl ?? "",
+      },
+    ];
+  };
+
+  const skip = () => {
+    const q = questions?.[index];
+    resultsRef.current = [
+      ...resultsRef.current,
+      {
+        guess: null,
+        correct: false,
+        correctAnswer: "?",
+        imageUrl: q?.imageUrl ?? "",
+      },
+    ];
+    advance();
+  };
+
   const submit = useMutation({
     mutationFn: async (questionId: number) => {
       const res = await client.answer.$post({
@@ -89,8 +124,10 @@ export function Quiz() {
       setOpen(false);
       if ("correct" in data && data.correct) {
         setScore((s) => s + 1);
+        recordResult(true, answer);
         setFeedback({ kind: "correct" });
       } else if ("correctAnswer" in data) {
+        recordResult(false, data.correctAnswer);
         setFeedback({ kind: "wrong", correctAnswer: data.correctAnswer });
       }
       setTimeout(advance, 1500);
@@ -116,21 +153,11 @@ export function Quiz() {
 
   if (finished) {
     return (
-      <div className="text-center mt-12">
-        <h2 className="text-mtg-green-400 text-2xl font-bold mb-2">
-          Quiz Complete!
-        </h2>
-        <p className="text-mtg-white-200 text-lg mt-2">
-          {score} / {questions.length} correct
-        </p>
-        <p className="text-mtg-white-500 mt-1">
-          {score === questions.length
-            ? "Perfect score!"
-            : score >= questions.length / 2
-              ? "Well played!"
-              : "Keep practicing!"}
-        </p>
-      </div>
+      <ResultsScreen
+        results={resultsRef.current}
+        total={questions.length}
+        score={score}
+      />
     );
   }
 
@@ -224,6 +251,14 @@ export function Quiz() {
         <Button type="submit" disabled={isPending || !answer.trim()}>
           {submit.isPending ? "…" : "Submit"}
         </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isPending}
+          onClick={skip}
+        >
+          Skip
+        </Button>
       </form>
 
       {feedback?.kind === "correct" && (
@@ -238,6 +273,110 @@ export function Quiz() {
       {submit.isError && !feedback && (
         <p className="text-mtg-red-400 mt-3">Something went wrong. Try again.</p>
       )}
+    </div>
+  );
+}
+
+function ResultsScreen({
+  results,
+  total,
+  score,
+}: {
+  results: Result[];
+  total: number;
+  score: number;
+}) {
+  const [visible, setVisible] = useState(0);
+  const [displayScore, setDisplayScore] = useState(0);
+
+  useEffect(() => {
+    setVisible(0);
+    setDisplayScore(0);
+  }, []);
+
+  useEffect(() => {
+    if (visible < results.length) {
+      const timer = setTimeout(() => {
+        setVisible((v) => v + 1);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, results.length]);
+
+  useEffect(() => {
+    if (displayScore < score) {
+      const timer = setTimeout(() => {
+        setDisplayScore((s) => s + 1);
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [displayScore, score]);
+
+  return (
+    <div>
+      <div className="sticky top-0 z-10 bg-mtg-white-950 pt-2 pb-4 mb-6 border-b border-mtg-white-800">
+        <h2 className="text-2xl font-bold text-center text-mtg-white-100 mb-1">
+          Results
+        </h2>
+        <p className="text-center text-3xl font-bold text-mtg-green-400">
+          {displayScore} / {total}
+        </p>
+        <p className="text-center text-mtg-white-500 text-sm mt-1">
+          {score === total
+            ? "Perfect!"
+            : score >= total / 2
+              ? "Well played!"
+              : "Keep practicing!"}
+        </p>
+        <div className="text-center mt-3">
+          <Link
+            to="/"
+            className="inline-flex px-4 py-2 bg-mtg-green-600 text-mtg-white-950 rounded-(--radius) font-semibold text-sm hover:bg-mtg-green-500 transition-colors"
+          >
+            Back to quizzes
+          </Link>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-5 sm:grid-cols-6 gap-3">
+        {results.map((r, i) => {
+          const show = i < visible;
+          return (
+            <div
+              key={i}
+              className={`flex flex-col items-center transition-all duration-300 ${
+                show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+              style={{ transitionDelay: show ? "0ms" : "0ms" }}
+            >
+              <div className="relative w-full">
+                <img
+                  src={r.imageUrl}
+                  alt=""
+                  className="w-full rounded-(--radius-sm) block"
+                />
+                <span
+                  className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    r.correct
+                      ? "bg-mtg-green-500 text-mtg-white-950"
+                      : "bg-mtg-red-500 text-mtg-white-950"
+                  }`}
+                >
+                  {r.correct ? "✓" : "✗"}
+                </span>
+              </div>
+              <p className="text-mtg-white-400 text-xs mt-1 text-center leading-tight truncate w-full">
+                {r.correct ? r.guess : (r.correctAnswer ?? "?")}
+              </p>
+              {!r.correct && r.guess && (
+                <p className="text-mtg-red-400 text-xs text-center leading-tight truncate w-full line-through">
+                  {r.guess}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
