@@ -1,5 +1,5 @@
-import { pgTable, serial, timestamp, text, boolean, integer, pgEnum } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { pgTable, serial, timestamp, text, boolean, integer, pgEnum, index } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
 
 // --- Enums ---
 
@@ -63,7 +63,12 @@ export const cards = pgTable('Card', {
   title: text('title').notNull(),
   set: setEnum('set').notNull(),
   year: integer('year').notNull(),
-});
+  titleNorm: text('title_norm').generatedAlwaysAs(
+    (): any => sql`lower(immutable_unaccent(${cards.title}))`,
+  ),
+}, (t) => [
+  index('cards_title_norm_trgm').using('gin', t.titleNorm.op('gin_trgm_ops')),
+]);
 
 // --- Relations ---
 
