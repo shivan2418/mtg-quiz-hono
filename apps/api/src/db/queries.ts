@@ -11,12 +11,15 @@ export async function autocomplete(qRaw: string): Promise<string[]> {
   if (q.length < 3) return [];
 
   const rows = await db
-    .select({ title: cards.title })
+    .select({
+      title: cards.title,
+    })
     .from(cards)
     .where(sql`${cards.titleNorm} LIKE ${'%' + q + '%'}`)
+    .groupBy(cards.title)
     .orderBy(
-      desc(sql`${cards.titleNorm} LIKE ${q + '%'}`),
-      asc(sql`length(${cards.title})`),
+      desc(sql`bool_or(${cards.titleNorm} LIKE ${q + '%'})`),
+      asc(sql`min(length(${cards.title}))`),
       asc(cards.title),
     )
     .limit(20);
@@ -29,13 +32,16 @@ export async function autocompleteFuzzy(qRaw: string): Promise<string[]> {
   if (q.length < 3) return [];
 
   const rows = await db
-    .select({ title: cards.title })
+    .select({
+      title: cards.title,
+    })
     .from(cards)
     .where(sql`${cards.titleNorm} % ${q}`)
+    .groupBy(cards.title)
     .orderBy(
-      desc(sql`similarity(${cards.titleNorm}, ${q})`),
-      desc(sql`${cards.titleNorm} LIKE ${q + '%'}`),
-      asc(sql`length(${cards.title})`),
+      desc(sql`max(similarity(${cards.titleNorm}, ${q}))`),
+      desc(sql`bool_or(${cards.titleNorm} LIKE ${q + '%'})`),
+      asc(sql`min(length(${cards.title}))`),
       asc(cards.title),
     )
     .limit(20);

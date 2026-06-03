@@ -1,7 +1,8 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { client } from "@/api";
 import { useState, useRef, useEffect } from "react";
+import { useDebouncedValue } from "@tanstack/react-pacer";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Card } from "@/components/card";
@@ -10,15 +11,6 @@ type Feedback =
   | null
   | { kind: "correct" }
   | { kind: "wrong"; correctAnswer: string };
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
 
 export function Quiz() {
   const { quizId } = useParams<{ quizId: string }>();
@@ -53,7 +45,7 @@ export function Quiz() {
     },
   });
 
-  const debouncedAnswer = useDebounce(answer, 100);
+  const [debouncedAnswer] = useDebouncedValue(answer, { wait: 100 });
 
   const { data: suggestions = [] } = useQuery({
     queryKey: ["autocomplete", debouncedAnswer],
@@ -64,6 +56,7 @@ export function Quiz() {
       return res.json();
     },
     enabled: debouncedAnswer.length >= 3,
+    placeholderData: keepPreviousData,
   });
 
   const selectSuggestion = (title: string) => {

@@ -100,84 +100,16 @@ function imageUrlFor(file: string) {
 
 async function seed() {
   const seedValue = quizSeed();
-  const quizCards = sampleCards(loadAlphaBetaCards(), questionCount, seedValue);
+  const alphaBetaCards = loadAlphaBetaCards();
+  const quizCards = sampleCards(alphaBetaCards, questionCount, seedValue);
 
   // --- Cards ---
-  const cardData: { title: string; set: typeof cards.$inferSelect.set; year: number }[] = [
-    // Alpha (1993)
-    { title: 'Black Lotus', set: 'ALPHA', year: 1993 },
-    { title: 'Mox Pearl', set: 'ALPHA', year: 1993 },
-    { title: 'Ancestral Recall', set: 'ALPHA', year: 1993 },
-    { title: 'Time Walk', set: 'ALPHA', year: 1993 },
-    { title: 'Shivan Dragon', set: 'ALPHA', year: 1993 },
-    { title: 'Serra Angel', set: 'ALPHA', year: 1993 },
-    { title: 'Lightning Bolt', set: 'ALPHA', year: 1993 },
-    { title: 'Counterspell', set: 'ALPHA', year: 1993 },
-    { title: 'Dark Ritual', set: 'ALPHA', year: 1993 },
-    { title: 'Giant Growth', set: 'ALPHA', year: 1993 },
-    // Beta (1993)
-    { title: 'Volcanic Island', set: 'BETA', year: 1993 },
-    { title: 'Underground Sea', set: 'BETA', year: 1993 },
-    { title: 'Chaos Orb', set: 'BETA', year: 1993 },
-    { title: 'Birds of Paradise', set: 'BETA', year: 1993 },
-    { title: 'Wrath of God', set: 'BETA', year: 1993 },
-    // Unlimited (1993)
-    { title: 'Mox Sapphire', set: 'UNLIMITED', year: 1993 },
-    { title: 'Mox Jet', set: 'UNLIMITED', year: 1993 },
-    { title: 'Mox Ruby', set: 'UNLIMITED', year: 1993 },
-    { title: 'Mox Emerald', set: 'UNLIMITED', year: 1993 },
-    { title: 'Timetwister', set: 'UNLIMITED', year: 1993 },
-    // Revised (1994)
-    { title: 'Savannah Lions', set: 'REVISED', year: 1994 },
-    { title: 'Kird Ape', set: 'REVISED', year: 1994 },
-    { title: 'Swords to Plowshares', set: 'REVISED', year: 1994 },
-    { title: 'Hypnotic Specter', set: 'REVISED', year: 1994 },
-    { title: 'Sol Ring', set: 'REVISED', year: 1994 },
-    // Fourth Edition (1995)
-    { title: 'Ball Lightning', set: 'FOURTH_EDITION', year: 1995 },
-    { title: 'Sylvan Library', set: 'FOURTH_EDITION', year: 1995 },
-    { title: 'Nevinyrrals Disk', set: 'FOURTH_EDITION', year: 1995 },
-    { title: 'Armageddon', set: 'FOURTH_EDITION', year: 1995 },
-    { title: 'Stasis', set: 'FOURTH_EDITION', year: 1995 },
-    // Fifth Edition (1997)
-    { title: 'City of Brass', set: 'FIFTH_EDITION', year: 1997 },
-    { title: 'Necropotence', set: 'FIFTH_EDITION', year: 1997 },
-    { title: 'Urzas Mine', set: 'FIFTH_EDITION', year: 1997 },
-    { title: 'Urzas Power Plant', set: 'FIFTH_EDITION', year: 1997 },
-    { title: 'Urzas Tower', set: 'FIFTH_EDITION', year: 1997 },
-    // Sixth Edition (1999)
-    { title: 'Enlightened Tutor', set: 'SIXTH_EDITION', year: 1999 },
-    { title: 'Vampiric Tutor', set: 'SIXTH_EDITION', year: 1999 },
-    { title: 'Worldly Tutor', set: 'SIXTH_EDITION', year: 1999 },
-    { title: 'Mystical Tutor', set: 'SIXTH_EDITION', year: 1999 },
-    { title: 'Regrowth', set: 'SIXTH_EDITION', year: 1999 },
-    // Seventh Edition (2001)
-    { title: 'Worship', set: 'SEVENTH_EDITION', year: 2001 },
-    { title: 'Opposition', set: 'SEVENTH_EDITION', year: 2001 },
-    { title: 'Static Orb', set: 'SEVENTH_EDITION', year: 2001 },
-    { title: 'Counterspell', set: 'SEVENTH_EDITION', year: 2001 },
-    { title: 'Wrath of God', set: 'SEVENTH_EDITION', year: 2001 },
-    // Eighth Edition (2003)
-    { title: 'Bribery', set: 'EIGHTH_EDITION', year: 2003 },
-    { title: 'Obliterate', set: 'EIGHTH_EDITION', year: 2003 },
-    { title: 'Blood Moon', set: 'EIGHTH_EDITION', year: 2003 },
-    { title: 'Boil', set: 'EIGHTH_EDITION', year: 2003 },
-    { title: 'Choke', set: 'EIGHTH_EDITION', year: 2003 },
-    // Ninth Edition (2005)
-    { title: 'Hypnotic Specter', set: 'NINTH_EDITION', year: 2005 },
-    { title: 'Serra Angel', set: 'NINTH_EDITION', year: 2005 },
-    { title: 'Kird Ape', set: 'NINTH_EDITION', year: 2005 },
-    { title: 'Giant Growth', set: 'NINTH_EDITION', year: 2005 },
-    { title: 'Will-o-the-Wisp', set: 'NINTH_EDITION', year: 2005 },
-    // Tenth Edition (2007)
-    { title: 'Platinum Angel', set: 'TENTH_EDITION', year: 2007 },
-    { title: 'Lord of the Pit', set: 'TENTH_EDITION', year: 2007 },
-    { title: 'Mahamoti Djinn', set: 'TENTH_EDITION', year: 2007 },
-    { title: 'Nightmare', set: 'TENTH_EDITION', year: 2007 },
-    { title: 'Shivan Dragon', set: 'TENTH_EDITION', year: 2007 },
-  ];
-
-  console.log('Seeding cards...');
+  console.log(`Seeding ${alphaBetaCards.length} cards from manifest...`);
+  const cardData = alphaBetaCards.map((entry) => ({
+    title: entry.name,
+    set: (entry.set === 'lea' ? 'ALPHA' : 'BETA') as typeof cards.$inferSelect.set,
+    year: 1993,
+  }));
   await db.insert(cards).values(cardData);
 
   // --- User ---
