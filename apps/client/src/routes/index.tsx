@@ -39,10 +39,10 @@ export function Home() {
     })),
   });
 
-  const isLoading = user ? serverQuizzes.isLoading : localResults.some((q) => q.isLoading);
+  const isLoading = user ? serverQuizzes.isLoading : localResults.some((q: { isLoading: boolean }) => q.isLoading);
   const quizzes = user
     ? serverQuizzes.data
-    : localResults.filter((q) => "id" in (q.data ?? {})).map((q) => q.data);
+    : localResults.filter((q: { data?: Record<string, unknown> }) => "id" in (q.data ?? {})).map((q) => q.data);
 
   return (
     <div>
@@ -64,23 +64,26 @@ export function Home() {
       )}
 
       <ul className="flex flex-col gap-3 list-none">
-        {quizzes?.map((quiz) => (
-          <li key={(quiz as { id: string }).id}>
-            <Link
-              to={`/quiz/${(quiz as { id: string }).id}`}
-              variant="card"
-            >
-              <strong>Quiz #{(quiz as { id: string }).id.slice(0, 8)}</strong>
-              <span className="ml-4 text-mtg-white-500">
-                {FORMAT_NAMES[(quiz as { format?: string }).format ?? "classic"] ??
-                  ((quiz as { format?: string }).format ?? "Classic")}
-                {" · "}Seed: {(quiz as { seed: number }).seed}
-                {(quiz as { completed: boolean }).completed &&
-                  ` — Score: ${(quiz as { score: number | null }).score ?? "—"}`}
-              </span>
-            </Link>
-          </li>
-        ))}
+        {quizzes?.map((quiz: Record<string, unknown> | undefined) => {
+          if (!quiz) return null;
+          return (
+            <li key={(quiz as { id: string }).id}>
+              <Link
+                to={`/quiz/${(quiz as { id: string }).id}`}
+                variant="card"
+              >
+                <strong>Quiz #{(quiz as { id: string }).id.slice(0, 8)}</strong>
+                <span className="ml-4 text-mtg-white-500">
+                  {FORMAT_NAMES[(quiz as { format?: string }).format ?? "classic"] ??
+                    ((quiz as { format?: string }).format ?? "Classic")}
+                  {" · "}Seed: {(quiz as { seed: number }).seed}
+                  {(quiz as { completed: boolean }).completed &&
+                    ` — Score: ${(quiz as { score: number | null }).score ?? "—"}`}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

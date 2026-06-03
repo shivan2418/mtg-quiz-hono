@@ -2,6 +2,12 @@ const sets = [
   'lea','leb','2ed','3ed','4ed','arn','atq','leg','drk','fem',
   'ice','hml','all','chr','5ed','mir','vis','wth','tmp','sth',
   'exo','6ed','usg','ulg','uds',
+  'mmq','nem','pcy',
+  'inv','pls','apc','7ed','ody','tor','jud',
+  'ons','lgn','scg','8ed','mrd','dst','5dn',
+  'chk','bok','sok','9ed','rav','gpt','dis',
+  'csp','tsp','plc','fut','10e','lrw','mor',
+  'shm','eve',
 ];
 
 const outDir = import.meta.dirname + '/../data/set-logos';

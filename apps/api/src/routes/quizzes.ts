@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db';
 import { quizzes, questions, cards } from '../db/schema';
-import { eq, sql, and, isNotNull, inArray } from 'drizzle-orm';
+import { eq, sql, and, isNotNull } from 'drizzle-orm';
 import { resolveUserId } from '../auth';
 import { getFormat } from '../db/formats';
 
@@ -61,12 +61,19 @@ export const quizzesRoute = new Hono()
     const seed = rawSeed ?? Math.floor(Math.random() * 100000);
     const codes = setCodes ?? getFormat(formatId ?? 'classic')?.setCodes ?? ['lea', 'leb'];
 
-    const cardRows = await db
-      .select()
-      .from(cards)
-      .where(inArray(cards.set, codes))
-      .orderBy(sql`RANDOM()`)
-      .limit(30);
+    // DISTINCT ON (title) ensures each card name appears only once (one artwork)
+    const query = sql`
+      SELECT * FROM (
+        SELECT DISTINCT ON ("Card"."title") *
+        FROM "Card"
+        WHERE "Card"."set" IN (${sql.join(codes.map((c) => sql`${c}`), sql`, `)})
+        ORDER BY "Card"."title", RANDOM()
+      ) sub
+      ORDER BY RANDOM()
+      LIMIT 30
+    `;
+    const cardResult = await db.execute<typeof cards.$inferSelect>(query);
+    const cardRows = cardResult.rows;
 
     if (cardRows.length === 0) {
       return c.json(

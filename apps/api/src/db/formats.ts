@@ -2,22 +2,57 @@ export interface QuizFormat {
   id: string;
   name: string;
   description: string;
-  /** Scryfall set codes used to filter the card pool */
   setCodes: string[];
 }
 
 export const formats: QuizFormat[] = [
   {
     id: 'classic',
-    name: 'Classic',
-    description: 'Alpha through Fallen Empires (1993–1994)',
+    name: 'Classic (93–94)',
+    description: 'Alpha through Fallen Empires',
     setCodes: ['lea', 'leb', '2ed', '3ed', '4ed', 'arn', 'atq', 'leg', 'drk', 'fem'],
   },
   {
-    id: 'middle',
-    name: 'Middle Era',
-    description: 'Ice Age through Urza\'s Destiny (1995–1999)',
-    setCodes: ['ice', 'hml', 'all', 'chr', '5ed', 'mir', 'vis', 'wth', 'tmp', 'sth', 'exo', '6ed', 'usg', 'ulg', 'uds'],
+    id: 'ice-mirage',
+    name: 'Ice Age / Mirage (95–98)',
+    description: 'Ice Age through Exodus',
+    setCodes: ['ice', 'hml', 'all', 'chr', '5ed', 'mir', 'vis', 'wth', 'tmp', 'sth', 'exo'],
+  },
+  {
+    id: 'urza-masques',
+    name: 'Urza / Masques (98–00)',
+    description: 'Urza\'s Saga through Prophecy',
+    setCodes: ['usg', 'ulg', 'uds', '6ed', 'mmq', 'nem', 'pcy'],
+  },
+  {
+    id: 'invasion-odyssey',
+    name: 'Invasion / Odyssey (00–02)',
+    description: 'Invasion through Judgment',
+    setCodes: ['inv', 'pls', 'apc', '7ed', 'ody', 'tor', 'jud'],
+  },
+  {
+    id: 'onslaught-mirrodin',
+    name: 'Onslaught / Mirrodin (02–04)',
+    description: 'Onslaught through Fifth Dawn',
+    setCodes: ['ons', 'lgn', 'scg', '8ed', 'mrd', 'dst', '5dn'],
+  },
+  {
+    id: 'kamigawa-ravnica',
+    name: 'Kamigawa / Ravnica (04–06)',
+    description: 'Champions of Kamigawa through Dissension',
+    setCodes: ['chk', 'bok', 'sok', '9ed', 'rav', 'gpt', 'dis'],
+  },
+  {
+    id: 'timespiral-lorwyn',
+    name: 'Time Spiral / Lorwyn (06–08)',
+    description: 'Coldsnap through Morningtide',
+    setCodes: ['csp', 'tsp', 'plc', 'fut', '10e', 'lrw', 'mor'],
+  },
+  {
+    id: 'shadowmoor',
+    name: 'Shadowmoor Block (08)',
+    description: 'Shadowmoor and Eventide',
+    setCodes: ['shm', 'eve'],
   },
 ];
 
@@ -25,4 +60,7 @@ export function getFormat(id: string): QuizFormat | undefined {
   return formats.find((f) => f.id === id);
 }
 
-export const defaultFormat: QuizFormat = formats[0]!;
+/** All set codes across every format */
+export function allSetCodes(): string[] {
+  return [...new Set(formats.flatMap((f) => f.setCodes))];
+}

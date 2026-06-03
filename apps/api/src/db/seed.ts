@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { db } from './index';
 import { cards, users } from './schema';
 import { hash } from 'bcryptjs';
-import { formats } from './formats';
+import { formats, allSetCodes } from './formats';
 
 function bulkDataPath() {
   if (process.env.BULK_DATA_PATH) return process.env.BULK_DATA_PATH;
@@ -18,6 +18,7 @@ interface ScryfallCard {
   name: string;
   set: string;
   released_at: string;
+  lang: string;
   image_uris?: { art_crop?: string; png?: string; large?: string };
 }
 
@@ -28,14 +29,9 @@ async function seed() {
   console.log(`Loaded ${allCards.length} cards`);
 
   // Collect all set codes from all formats
-  const allSets = new Set<string>();
-  for (const fmt of formats) {
-    for (const code of fmt.setCodes) {
-      allSets.add(code);
-    }
-  }
+  const allSets = new Set(allSetCodes());
   console.log(`\nFormats: ${formats.map((f) => `${f.name} (${f.setCodes.length} sets)`).join(', ')}`);
-  console.log(`Target sets: ${allSets.size} — ${[...allSets].join(', ')}`);
+  console.log(`Target sets: ${allSets.size} — ${[...allSets].sort().join(', ')}`);
 
   // Insert one row per (name, set, collector_number) — each printing
   const seen = new Set<string>();

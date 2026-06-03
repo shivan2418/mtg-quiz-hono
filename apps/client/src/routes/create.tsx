@@ -40,8 +40,8 @@ export function Create() {
   const totalArtwork = useMemo(
     () =>
       sets
-        .filter((s) => selected.has(s.code))
-        .reduce((sum, s) => sum + s.uniqueArtwork, 0),
+        .filter((s: SetInfo) => selected.has(s.code))
+        .reduce((sum: number, s: SetInfo) => sum + s.uniqueArtwork, 0),
     [sets, selected],
   );
 
@@ -102,14 +102,14 @@ export function Create() {
               onClick={() => toggleSet(s.code)}
               className={`flex items-center gap-3 p-3 rounded-(--radius) border text-left transition-all cursor-pointer ${
                 on
-                  ? "border-mtg-green-500 bg-mtg-green-950/30 ring-1 ring-mtg-green-500/50"
-                  : "border-mtg-white-800 hover:border-mtg-white-600 bg-mtg-white-900/50"
+                  ? "border-mtg-green-500 bg-mtg-green-950/40 ring-1 ring-mtg-green-500/50"
+                  : "border-mtg-white-800 hover:border-mtg-white-700 bg-mtg-white-950/60"
               }`}
             >
               <img
                 src={`/set-logos/${s.code}.svg`}
                 alt={s.code}
-                className="w-8 h-8 shrink-0"
+                className="w-8 h-8 shrink-0 invert"
               />
               <div className="min-w-0 flex-1">
                 <div className="text-mtg-white-200 font-medium text-sm truncate">

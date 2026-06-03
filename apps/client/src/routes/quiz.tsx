@@ -200,7 +200,7 @@ export function Quiz() {
           />
           {open && suggestions.length > 0 && (
             <ul className="absolute top-full left-0 right-0 mt-1 bg-mtg-white-900 border border-mtg-white-700 rounded-(--radius) shadow-lg z-10 max-h-56 overflow-y-auto">
-              {suggestions.map((title, i) => (
+              {suggestions.map((title: string, i: number) => (
                 <li
                   key={title}
                   onMouseDown={(e) => {
