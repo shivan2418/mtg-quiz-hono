@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { client } from "@/api";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Card } from "@/components/card";
@@ -11,6 +11,15 @@ type Feedback =
   | { kind: "correct" }
   | { kind: "wrong"; correctAnswer: string };
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 export function Quiz() {
   const { quizId } = useParams<{ quizId: string }>();
   const id = Number(quizId);
@@ -19,7 +28,10 @@ export function Quiz() {
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [finished, setFinished] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: quiz } = useQuery({
     queryKey: ["quiz", id],
@@ -41,11 +53,31 @@ export function Quiz() {
     },
   });
 
+  const debouncedAnswer = useDebounce(answer, 100);
+
+  const { data: suggestions = [] } = useQuery({
+    queryKey: ["autocomplete", debouncedAnswer],
+    queryFn: async () => {
+      const res = await client.autocomplete.$get({
+        query: { q: debouncedAnswer },
+      });
+      return res.json();
+    },
+    enabled: debouncedAnswer.length >= 3,
+  });
+
+  const selectSuggestion = (title: string) => {
+    setAnswer(title);
+    setOpen(false);
+    setHighlightIndex(-1);
+  };
+
   const advance = () => {
     if (questions && index < questions.length - 1) {
       setIndex((i) => i + 1);
       setAnswer("");
       setFeedback(null);
+      setOpen(false);
       setTimeout(() => inputRef.current?.focus(), 0);
     } else {
       setFinished(true);
@@ -61,6 +93,7 @@ export function Quiz() {
       return res.json();
     },
     onSuccess: (data) => {
+      setOpen(false);
       if ("correct" in data && data.correct) {
         setScore((s) => s + 1);
         setFeedback({ kind: "correct" });
@@ -70,6 +103,16 @@ export function Quiz() {
       setTimeout(advance, 1500);
     },
   });
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
 
   if (isLoading)
     return <p className="text-mtg-white-500">Loading questions…</p>;
@@ -131,15 +174,60 @@ export function Quiz() {
         }}
         className="flex gap-2"
       >
-        <Input
-          ref={inputRef}
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          placeholder="Card name…"
-          autoFocus
-          disabled={isPending}
-          className="flex-1"
-        />
+        <div ref={containerRef} className="flex-1 relative">
+          <Input
+            ref={inputRef}
+            value={answer}
+            onChange={(e) => {
+              setAnswer(e.target.value);
+              setOpen(true);
+              setHighlightIndex(-1);
+            }}
+            onFocus={() => {
+              if (suggestions.length > 0) setOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (!open || suggestions.length === 0) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setHighlightIndex((i) => Math.min(i + 1, suggestions.length - 1));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setHighlightIndex((i) => Math.max(i - 1, -1));
+              } else if (e.key === "Enter" && highlightIndex >= 0) {
+                e.preventDefault();
+                selectSuggestion(suggestions[highlightIndex]!);
+              } else if (e.key === "Escape") {
+                setOpen(false);
+                setHighlightIndex(-1);
+              }
+            }}
+            placeholder="Card name…"
+            autoFocus
+            disabled={isPending}
+            className="w-full"
+          />
+          {open && suggestions.length > 0 && (
+            <ul className="absolute top-full left-0 right-0 mt-1 bg-mtg-white-900 border border-mtg-white-700 rounded-(--radius) shadow-lg z-10 max-h-56 overflow-y-auto">
+              {suggestions.map((title, i) => (
+                <li
+                  key={title}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    selectSuggestion(title);
+                  }}
+                  className={`px-4 py-2 cursor-pointer text-mtg-white-200 text-sm ${
+                    i === highlightIndex
+                      ? "bg-mtg-green-800 text-mtg-white-100"
+                      : "hover:bg-mtg-white-800"
+                  }`}
+                >
+                  {title}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <Button type="submit" disabled={isPending || !answer.trim()}>
           {submit.isPending ? "…" : "Submit"}
         </Button>
