@@ -7,7 +7,8 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "download-art-crops": "node scripts/download-art-crops.mjs"
+    "download-art-crops": "node scripts/download-art-crops.mjs",
+    "download-alpha-beta-art-crops": "node scripts/download-alpha-beta-art-crops.mjs"
   },
   "devDependencies": {
     "prettier": "^3.7.4",

@@ -1,8 +1,107 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { db } from './index';
 import { cards, users, quizzes, questions } from './schema';
 import { hash } from 'bcryptjs';
 
+const questionCount = 30;
+const defaultImageStaticBaseUrl = '/art-crops';
+
+type AlphaBetaManifestEntry = {
+  file: string;
+  name: string;
+  set: 'lea' | 'leb';
+};
+
+function alphaBetaManifestPath() {
+  if (process.env.ALPHA_BETA_MANIFEST_PATH) {
+    return process.env.ALPHA_BETA_MANIFEST_PATH;
+  }
+
+  const seedDir = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(seedDir, '../../../..');
+
+  return path.join(repoRoot, 'data/art-crops/alpha-beta-manifest.json');
+}
+
+function loadAlphaBetaCards() {
+  const manifestPath = alphaBetaManifestPath();
+  const manifest = JSON.parse(
+    readFileSync(manifestPath, 'utf8'),
+  ) as AlphaBetaManifestEntry[];
+  const byName = new Map<string, AlphaBetaManifestEntry>();
+
+  for (const entry of manifest) {
+    if (entry.set !== 'lea' && entry.set !== 'leb') continue;
+
+    const existing = byName.get(entry.name);
+    if (!existing || (entry.set === 'lea' && existing.set !== 'lea')) {
+      byName.set(entry.name, entry);
+    }
+  }
+
+  return [...byName.values()];
+}
+
+function quizSeed() {
+  if (!process.env.SEED_QUIZ_SEED) {
+    return Math.floor(Math.random() * 1_000_000_000);
+  }
+
+  const seed = Number(process.env.SEED_QUIZ_SEED);
+  if (!Number.isInteger(seed)) {
+    throw new Error('SEED_QUIZ_SEED must be an integer');
+  }
+
+  return seed;
+}
+
+function sampleCards(
+  sourceCards: AlphaBetaManifestEntry[],
+  count: number,
+  seed: number,
+) {
+  if (sourceCards.length < count) {
+    throw new Error(
+      `Need ${count} Alpha/Beta cards with downloaded images, found ${sourceCards.length}`,
+    );
+  }
+
+  const random = seededRandom(seed);
+  const shuffled = [...sourceCards];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    const current = shuffled[index]!;
+    shuffled[index] = shuffled[swapIndex]!;
+    shuffled[swapIndex] = current;
+  }
+
+  return shuffled.slice(0, count);
+}
+
+function seededRandom(seed: number) {
+  let value = seed >>> 0;
+
+  return () => {
+    value += 0x6d2b79f5;
+    let next = value;
+    next = Math.imul(next ^ (next >>> 15), next | 1);
+    next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
+    return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function imageUrlFor(file: string) {
+  const baseUrl = process.env.IMAGE_STATIC_BASE_URL ?? defaultImageStaticBaseUrl;
+  return `${baseUrl.replace(/\/+$/, '')}/${file}`;
+}
+
 async function seed() {
+  const seedValue = quizSeed();
+  const quizCards = sampleCards(loadAlphaBetaCards(), questionCount, seedValue);
+
   // --- Cards ---
   const cardData: { title: string; set: typeof cards.$inferSelect.set; year: number }[] = [
     // Alpha (1993)
@@ -99,7 +198,7 @@ async function seed() {
   const [quiz] = await db
     .insert(quizzes)
     .values({
-      seed: 42,
+      seed: seedValue,
       completed: false,
       userId: user.id,
     })
@@ -107,14 +206,16 @@ async function seed() {
   if (!quiz) throw new Error('Failed to create quiz');
 
   // --- Questions ---
-  console.log('Seeding questions...');
-  const questionData: { imageUrl: string; answer: string; quizId: number }[] = [
-    { imageUrl: 'https://cards.scryfall.io/large/front/0/0/00000000-0000-0000-0000-000000000001.jpg', answer: 'Black Lotus', quizId: quiz.id },
-    { imageUrl: 'https://cards.scryfall.io/large/front/0/0/00000000-0000-0000-0000-000000000002.jpg', answer: 'Ancestral Recall', quizId: quiz.id },
-    { imageUrl: 'https://cards.scryfall.io/large/front/0/0/00000000-0000-0000-0000-000000000003.jpg', answer: 'Lightning Bolt', quizId: quiz.id },
-    { imageUrl: 'https://cards.scryfall.io/large/front/0/0/00000000-0000-0000-0000-000000000004.jpg', answer: 'Counterspell', quizId: quiz.id },
-    { imageUrl: 'https://cards.scryfall.io/large/front/0/0/00000000-0000-0000-0000-000000000005.jpg', answer: 'Shivan Dragon', quizId: quiz.id },
-  ];
+  console.log(`Seeding ${questionCount} Alpha/Beta questions...`);
+  console.log(
+    `Using image static base URL: ${process.env.IMAGE_STATIC_BASE_URL ?? defaultImageStaticBaseUrl}`,
+  );
+  const questionData: { imageUrl: string; answer: string; quizId: number }[] =
+    quizCards.map((card) => ({
+      imageUrl: imageUrlFor(card.file),
+      answer: card.name,
+      quizId: quiz.id,
+    }));
   await db.insert(questions).values(questionData);
 
   console.log('Seed complete.');

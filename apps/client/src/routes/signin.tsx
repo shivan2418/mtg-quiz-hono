@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/auth";
+import { useAuth } from "@/use-auth";
+import { Button } from "@/components/button";
+import { Input } from "@/components/input";
+import { Card } from "@/components/card";
 
 export function SignIn() {
   const { login, register, user } = useAuth();
@@ -33,40 +36,21 @@ export function SignIn() {
   };
 
   return (
-    <div
-      style={{
-        maxWidth: 400,
-        margin: "4rem auto",
-        padding: "2rem",
-        background: "var(--color-surface)",
-        borderRadius: "var(--radius)",
-        border: "1px solid var(--color-border)",
-      }}
-    >
-      <h1
-        style={{
-          fontSize: "1.5rem",
-          marginBottom: "1.5rem",
-          textAlign: "center",
-          color: "var(--color-text)",
-        }}
-      >
+    <Card className="max-w-md mx-auto mt-16">
+      <h1 className="text-xl font-bold text-center text-mtg-white-100 mb-6">
         {isRegister ? "Register" : "Sign In"}
       </h1>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-      >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {isRegister && (
-          <input
+          <Input
             type="text"
             placeholder="Name (optional)"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         )}
-        <input
+        <Input
           type="email"
           placeholder="Email"
           value={email}
@@ -74,7 +58,7 @@ export function SignIn() {
           required
           autoComplete="email"
         />
-        <input
+        <Input
           type="password"
           placeholder="Password"
           value={password}
@@ -84,53 +68,26 @@ export function SignIn() {
         />
 
         {error && (
-          <p style={{ color: "var(--color-danger)", fontSize: "0.875rem" }}>
-            {error}
-          </p>
+          <p className="text-mtg-red-400 text-sm">{error}</p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            padding: "0.75rem",
-            background: loading
-              ? "var(--color-border)"
-              : "var(--color-primary)",
-            color: "var(--mtg-white-950)",
-            borderRadius: "var(--radius)",
-            fontWeight: 600,
-            fontSize: "1rem",
-          }}
-        >
+        <Button type="submit" disabled={loading} className="w-full">
           {loading ? "…" : isRegister ? "Create Account" : "Sign In"}
-        </button>
+        </Button>
       </form>
 
-      <p
-        style={{
-          marginTop: "1rem",
-          textAlign: "center",
-          color: "var(--color-text-muted)",
-          fontSize: "0.875rem",
-        }}
-      >
+      <p className="mt-4 text-center text-mtg-white-500 text-sm">
         {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}
         <button
           onClick={() => {
             setIsRegister(!isRegister);
             setError("");
           }}
-          style={{
-            background: "none",
-            color: "var(--color-primary)",
-            textDecoration: "underline",
-            fontSize: "0.875rem",
-          }}
+          className="bg-transparent text-mtg-green-400 underline text-sm cursor-pointer"
         >
           {isRegister ? "Sign in" : "Register"}
         </button>
       </p>
-    </div>
+    </Card>
   );
 }

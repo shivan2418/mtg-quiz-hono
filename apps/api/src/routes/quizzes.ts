@@ -2,8 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../db';
 import { quizzes, questions, cards } from '../db/schema';
 import { eq, sql } from 'drizzle-orm';
-import { authMiddleware } from '../auth';
-import type { Variables } from '../index';
+import { authGuard, type Variables } from '../auth';
 
 export const quizzesRoute = new Hono<{ Variables: Variables }>()
   .get('/', async (c) => {
@@ -28,28 +27,7 @@ export const quizzesRoute = new Hono<{ Variables: Variables }>()
       .where(eq(questions.quizId, id));
     return c.json(result);
   })
-  .post('/:id/answer', async (c) => {
-    const quizId = Number(c.req.param('id'));
-    const { questionId, answer } = await c.req.json<{
-      questionId: number;
-      answer: string;
-    }>();
-
-    const rows = await db
-      .select()
-      .from(questions)
-      .where(eq(questions.id, questionId));
-    const question = rows[0];
-    if (!question || question.quizId !== quizId) {
-      return c.json({ error: 'Question not found' }, 404);
-    }
-
-    const correct =
-      question.answer.toLowerCase().trim() === answer.toLowerCase().trim();
-
-    return c.json({ correct });
-  })
-  .post('/', authMiddleware, async (c) => {
+  .post('/', authGuard, async (c) => {
     const user = c.get('user');
     const { seed: rawSeed } = await c.req.json<{ seed?: number }>();
     const seed = rawSeed ?? Math.floor(Math.random() * 100000);

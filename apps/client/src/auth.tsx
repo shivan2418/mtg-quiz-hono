@@ -1,35 +1,6 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-  type ReactNode,
-} from "react";
-
-interface User {
-  id: number;
-  email: string;
-  name: string | null;
-  admin: boolean;
-}
-
-interface AuthState {
-  user: User | null;
-  token: string | null;
-  login: (
-    email: string,
-    password: string,
-  ) => Promise<{ ok: boolean; error?: string }>;
-  register: (
-    email: string,
-    password: string,
-    name?: string,
-  ) => Promise<{ ok: boolean; error?: string }>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthState | null>(null);
+import { useState, useCallback, useMemo, type ReactNode } from "react";
+import { AuthContext } from "./use-auth";
+import type { User } from "./use-auth";
 
 function decodePayload(token: string): User | null {
   try {
@@ -45,22 +16,18 @@ function decodePayload(token: string): User | null {
   }
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem("token"),
-  );
+function getInitialToken(): string | null {
+  return localStorage.getItem("token");
+}
 
-  useEffect(() => {
-    if (token) {
-      const u = decodePayload(token);
-      if (u) setUser(u);
-      else {
-        localStorage.removeItem("token");
-        setToken(null);
-      }
-    }
-  }, [token]);
+function getInitialUser(): User | null {
+  const token = getInitialToken();
+  return token ? decodePayload(token) : null;
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [token, setToken] = useState<string | null>(getInitialToken);
+  const [user, setUser] = useState<User | null>(getInitialUser);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -78,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       localStorage.setItem("token", data.token);
       setToken(data.token);
+      setUser(decodePayload(data.token));
       return { ok: true };
     } catch {
       return { ok: false, error: "Network error" };
@@ -110,15 +78,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, token, login, register, logout }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, token, login, register, logout }),
+    [user, token, login, register, logout],
   );
-}
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 }

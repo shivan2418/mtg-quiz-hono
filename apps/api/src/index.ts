@@ -1,14 +1,33 @@
 import { Hono } from 'hono';
-import type { AuthPayload } from './auth';
+import { db } from './db';
+import { questions } from './db/schema';
+import { eq } from 'drizzle-orm';
 import { auth } from './routes/auth';
-import { quizzesRoute as quizzes } from './routes/quizzes';
+import { quizzesRoute as quizRoutes } from './routes/quizzes';
 
-export type Variables = {
-  user: AuthPayload;
-};
-
-const app = new Hono<{ Variables: Variables }>()
+const app = new Hono()
   .route('/auth', auth)
-  .route('/quizzes', quizzes);
+  .route('/quizzes', quizRoutes)
+  .post('/answer', async (c) => {
+    const { quizId, questionId, answer } = await c.req.json<{
+      quizId: number;
+      questionId: number;
+      answer: string;
+    }>();
+
+    const rows = await db
+      .select()
+      .from(questions)
+      .where(eq(questions.id, questionId));
+    const question = rows[0];
+    if (!question || question.quizId !== quizId) {
+      return c.json({ error: 'Question not found' }, 404);
+    }
+
+    const correct =
+      question.answer.toLowerCase().trim() === answer.toLowerCase().trim();
+
+    return c.json({ correct });
+  });
 
 export default app;
