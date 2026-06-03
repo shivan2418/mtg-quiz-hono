@@ -6,6 +6,8 @@
   },
   "scripts": {
     "build": "tsc",
+    "db:push": "drizzle-kit push",
+    "db:setup": "drizzle-kit push && bun run src/db/seed.ts",
     "dev": "bun run --hot src/index.ts",
     "lint": "eslint src/",
     "check-types": "tsc --noEmit",

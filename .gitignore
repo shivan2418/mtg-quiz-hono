@@ -1,6 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 data
+apps/client/public/art-crops
 
 # Dependencies
 node_modules

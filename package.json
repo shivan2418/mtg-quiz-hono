@@ -4,6 +4,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "db:push": "pnpm --filter api db:push",
+    "db:seed": "pnpm --filter api seed",
+    "db:setup": "pnpm --filter api db:setup",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
