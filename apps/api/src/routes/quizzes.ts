@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../db';
 import { quizzes, questions, cards } from '../db/schema';
 import { eq, sql, and, isNotNull, inArray } from 'drizzle-orm';
-import { verifyToken } from '../auth';
+import { resolveUserId } from '../auth';
 import { defaultFormat, getFormat } from '../db/formats';
 
 export const quizzesRoute = new Hono()
@@ -50,12 +50,7 @@ export const quizzesRoute = new Hono()
     return c.json(rows);
   })
   .post('/', async (c) => {
-    const header = c.req.header('Authorization');
-    let userId: number | undefined;
-    if (header?.startsWith('Bearer ')) {
-      const payload = verifyToken(header.slice(7));
-      if (payload) userId = payload.id;
-    }
+    const userId = await resolveUserId(c.req.header('Authorization'));
 
     const { seed: rawSeed, formatId } = await c.req.json<{ seed?: number; formatId?: string }>();
     const seed = rawSeed ?? Math.floor(Math.random() * 100000);

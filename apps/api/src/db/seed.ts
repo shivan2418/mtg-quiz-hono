@@ -18,7 +18,7 @@ interface ScryfallCard {
   name: string;
   set: string;
   released_at: string;
-  image_uris?: { png?: string; large?: string };
+  image_uris?: { art_crop?: string; png?: string; large?: string };
 }
 
 async function seed() {
@@ -51,7 +51,7 @@ async function seed() {
 
     cardData.push({
       title,
-      file: c.image_uris?.png ?? c.image_uris?.large ?? '',
+      file: c.image_uris?.art_crop ?? c.image_uris?.png ?? '',
       set: c.set,
       year: parseInt(c.released_at?.slice(0, 4) ?? '1993'),
     });
