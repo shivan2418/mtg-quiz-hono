@@ -84,9 +84,9 @@ export function Quiz() {
       } else {
         setFeedback({ kind: "wrong", correctAnswer: cardName });
       }
+      setAnswer("");
       setTimeout(() => {
         setFeedback(null);
-        setAnswer("");
       }, 1500);
     },
   });
@@ -289,31 +289,35 @@ function ResultsScreen({
 
   return (
     <div>
-      <div className="sticky top-0 z-10 bg-mtg-white-950 pt-2 pb-4 mb-6 border-b border-mtg-white-800">
-        <h2 className="text-2xl font-bold text-center text-mtg-white-100 mb-1">
-          Results
-        </h2>
-        <p className="text-center text-3xl font-bold text-mtg-green-400">
-          {displayScore} / {total}
-        </p>
-        <p className="text-center text-mtg-white-500 text-sm mt-1">
-          {score === total
-            ? "Perfect!"
-            : score >= total / 2
-              ? "Well played!"
-              : "Keep practicing!"}
-        </p>
-        <div className="text-center mt-3">
-          <Link
-            to="/"
-            className="inline-flex px-4 py-2 bg-mtg-green-600 text-mtg-white-950 rounded-(--radius) font-semibold text-sm hover:bg-mtg-green-500 transition-colors"
-          >
-            Back to quizzes
-          </Link>
+      <div className="mb-4 border-b border-mtg-white-800 pb-3">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-mtg-white-100">Results</h2>
+            <p className="text-mtg-white-500 text-sm">
+              {score === total
+                ? "Perfect!"
+                : score >= total / 2
+                  ? "Well played!"
+                  : "Keep practicing!"}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-3xl font-bold text-mtg-green-400 leading-none">
+              {displayScore} <span className="text-lg text-mtg-white-500">/ {total}</span>
+            </p>
+            <div className="mt-2">
+              <Link
+                to="/"
+                className="inline-flex px-3 py-1.5 bg-mtg-green-600 text-mtg-white-950 rounded-(--radius) font-semibold text-sm hover:bg-mtg-green-500 transition-colors"
+              >
+                Back
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-5 sm:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {results.map((r, i) => {
           const show = i < visible;
           return (
@@ -327,11 +331,11 @@ function ResultsScreen({
                 <img
                   src={r.imageUrl}
                   alt=""
-                  className="w-full rounded-(--radius-sm) block cursor-pointer hover:ring-2 hover:ring-mtg-green-500 transition-all"
+                  className="w-full rounded-(--radius) block cursor-pointer hover:ring-2 hover:ring-mtg-green-500 transition-all"
                   onClick={() => setModal(r.imageUrl)}
                 />
                 <span
-                  className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                  className={`absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                     r.correct
                       ? "bg-mtg-green-500 text-mtg-white-950"
                       : "bg-mtg-red-500 text-mtg-white-950"
@@ -340,11 +344,11 @@ function ResultsScreen({
                   {r.correct ? "✓" : "✗"}
                 </span>
               </div>
-              <p className="text-mtg-white-400 text-xs mt-1 text-center leading-tight truncate w-full">
+              <p className="text-mtg-white-400 text-sm mt-1 text-center leading-tight truncate w-full">
                 {r.correct ? r.guess : (r.correctAnswer ?? "?")}
               </p>
               {!r.correct && r.guess && (
-                <p className="text-mtg-red-400 text-xs text-center leading-tight truncate w-full line-through">
+                <p className="text-mtg-red-400 text-sm text-center leading-tight truncate w-full line-through">
                   {r.guess}
                 </p>
               )}
