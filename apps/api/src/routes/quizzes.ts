@@ -21,11 +21,15 @@ export const quizzesRoute = new Hono<{ Variables: Variables }>()
   })
   .get('/:id/questions', async (c) => {
     const id = Number(c.req.param('id'));
-    const result = await db
-      .select()
+    const rows = await db
+      .select({
+        id: questions.id,
+        imageUrl: questions.imageUrl,
+        quizId: questions.quizId,
+      })
       .from(questions)
       .where(eq(questions.quizId, id));
-    return c.json(result);
+    return c.json(rows);
   })
   .post('/', authGuard, async (c) => {
     const user = c.get('user');
@@ -59,10 +63,5 @@ export const quizzesRoute = new Hono<{ Variables: Variables }>()
       })),
     );
 
-    const result = await db
-      .select()
-      .from(questions)
-      .where(eq(questions.quizId, quiz.id));
-
-    return c.json({ quiz, questions: result }, 201);
+    return c.json({ quiz }, 201);
   });
