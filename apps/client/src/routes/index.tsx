@@ -77,8 +77,9 @@ export function Home() {
                   {FORMAT_NAMES[(quiz as { format?: string }).format ?? "classic"] ??
                     ((quiz as { format?: string }).format ?? "Classic")}
                   {" · "}Seed: {(quiz as { seed: number }).seed}
-                  {(quiz as { completed: boolean }).completed &&
-                    ` — Score: ${(quiz as { score: number | null }).score ?? "—"}`}
+                  {(quiz as { completedAt: string | null }).completedAt !== null
+                    ? ` — Score: ${(quiz as { score: number | null }).score ?? "—"}`
+                    : ` — ${(quiz as { currentIndex: number }).currentIndex}/${(quiz as { questionCount: number }).questionCount}`}
                 </span>
               </Link>
             </li>

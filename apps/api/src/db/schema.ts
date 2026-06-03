@@ -23,7 +23,7 @@ export const quizzes = pgTable('Quiz', {
   format: text('format').notNull().default('classic'),
   questionCount: integer('questionCount').default(30).notNull(),
   currentIndex: integer('currentIndex').default(0).notNull(),
-  completed: boolean('completed').default(false).notNull(),
+  completedAt: timestamp('completedAt', { mode: 'date' }),
   score: integer('score').default(0),
   results: jsonb('results')
     .$type<{ questionIndex: number; guess: string | null; correct: boolean; correctAnswer: string; imageUrl: string }[]>()

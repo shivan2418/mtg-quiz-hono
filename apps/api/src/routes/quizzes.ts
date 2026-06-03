@@ -84,7 +84,7 @@ export const quizzesRoute = new Hono()
 
     const [quiz] = await db
       .insert(quizzes)
-      .values({ seed, format: formatId ?? 'custom', questionCount: cardRows.length, completed: false, userId })
+      .values({ seed, format: formatId ?? 'custom', questionCount: cardRows.length, userId })
       .returning();
     if (!quiz) return c.json({ error: 'Failed to create quiz' }, 500);
 

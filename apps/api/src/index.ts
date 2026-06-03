@@ -76,7 +76,7 @@ const app = new Hono()
         currentIndex: nextIndex,
         score: nextScore,
         results: nextResults,
-        completed: isComplete,
+        ...(isComplete ? { completedAt: new Date() } : {}),
       })
       .where(eq(quizzes.id, quizId));
 
@@ -84,7 +84,7 @@ const app = new Hono()
     response.state = {
       currentIndex: nextIndex,
       score: nextScore,
-      completed: isComplete,
+      completedAt: isComplete ? new Date() : null,
       results: nextResults,
     };
 

@@ -120,7 +120,7 @@ export function Quiz() {
     return <p className="text-mtg-white-500">No questions found.</p>;
   }
 
-  if (quiz && "completed" in quiz && quiz.completed) {
+  if (quiz && "completedAt" in quiz && quiz.completedAt !== null) {
     return (
       <ResultsScreen
         results={(quiz as { results: Result[] }).results ?? []}
