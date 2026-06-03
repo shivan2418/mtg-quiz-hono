@@ -66,3 +66,8 @@ body {
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
 }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

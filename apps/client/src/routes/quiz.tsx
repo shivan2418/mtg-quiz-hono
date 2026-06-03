@@ -7,12 +7,8 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Card } from "@/components/card";
 
-type Feedback =
-  | null
-  | { kind: "correct" }
-  | { kind: "wrong"; correctAnswer: string };
-
 interface Result {
+  questionIndex: number;
   guess: string | null;
   correct: boolean;
   correctAnswer: string;
@@ -21,23 +17,19 @@ interface Result {
 
 export function Quiz() {
   const { quizId } = useParams<{ quizId: string }>();
-  const id = Number(quizId);
-  const [index, setIndex] = useState(0);
+  const id = quizId!;
   const [answer, setAnswer] = useState("");
-  const [score, setScore] = useState(0);
-  const [feedback, setFeedback] = useState<Feedback>(null);
-  const [finished, setFinished] = useState(false);
+  const [feedback, setFeedback] = useState<{ kind: "correct" | "wrong"; correctAnswer: string } | null>(null);
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
-  const resultsRef = useRef<Result[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { data: quiz } = useQuery({
+  const { data: quiz, refetch: refetchQuiz } = useQuery({
     queryKey: ["quiz", id],
     queryFn: async () => {
       const res = await client.quizzes[":id"].$get({
-        param: { id: String(id) },
+        param: { id },
       });
       return res.json();
     },
@@ -47,7 +39,7 @@ export function Quiz() {
     queryKey: ["questions", id],
     queryFn: async () => {
       const res = await client.quizzes[":id"].questions.$get({
-        param: { id: String(id) },
+        param: { id },
       });
       return res.json();
     },
@@ -73,67 +65,33 @@ export function Quiz() {
     setHighlightIndex(-1);
   };
 
-  const advance = () => {
-    if (questions && index < questions.length - 1) {
-      setIndex((i) => i + 1);
-      setAnswer("");
-      setFeedback(null);
-      setOpen(false);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    } else {
-      setFinished(true);
-      setFeedback(null);
-    }
-  };
-
-  const recordResult = (correct: boolean, correctAnswer: string) => {
-    const q = questions?.[index];
-    resultsRef.current = [
-      ...resultsRef.current,
-      {
-        guess: answer || null,
-        correct,
-        correctAnswer,
-        imageUrl: q?.imageUrl ?? "",
-      },
-    ];
-  };
-
-  const skip = () => {
-    const q = questions?.[index];
-    resultsRef.current = [
-      ...resultsRef.current,
-      {
-        guess: null,
-        correct: false,
-        correctAnswer: "?",
-        imageUrl: q?.imageUrl ?? "",
-      },
-    ];
-    advance();
-  };
-
   const submit = useMutation({
-    mutationFn: async (questionId: number) => {
+    mutationFn: async () => {
+      const q = questions?.[quiz && "currentIndex" in quiz ? (quiz as { currentIndex: number }).currentIndex : 0];
+      if (!q) throw new Error("No question");
       const res = await client.answer.$post({
-        json: { quizId: id, questionId, answer },
+        json: { quizId: id, questionId: q.id, answer },
       });
-      return res.json();
+      return { data: await res.json(), question: q };
     },
-    onSuccess: (data) => {
+    onSuccess: ({ data }) => {
       setOpen(false);
-      if ("correct" in data && data.correct) {
-        setScore((s) => s + 1);
-        recordResult(true, answer);
-        setFeedback({ kind: "correct" });
-      } else if ("correctAnswer" in data) {
-        recordResult(false, data.correctAnswer);
-        setFeedback({ kind: "wrong", correctAnswer: data.correctAnswer });
+      refetchQuiz();
+      const d = data as { correct?: boolean; correctAnswer?: string };
+      const cardName = d.correctAnswer ?? "";
+      if (d.correct) {
+        setFeedback({ kind: "correct", correctAnswer: cardName });
+      } else {
+        setFeedback({ kind: "wrong", correctAnswer: cardName });
       }
-      setTimeout(advance, 1500);
+      setTimeout(() => {
+        setFeedback(null);
+        setAnswer("");
+      }, 1500);
     },
   });
 
+  // Close autocomplete dropdown when clicking outside the input container
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -144,6 +102,15 @@ export function Quiz() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  const currentIndex = quiz && "currentIndex" in quiz ? (quiz as { currentIndex: number }).currentIndex : 0;
+  const current = questions?.[currentIndex];
+  const isPending = submit.isPending || !!feedback;
+
+  // Auto-focus the input when the question changes
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [currentIndex]);
+
   if (isLoading)
     return <p className="text-mtg-white-500">Loading questions…</p>;
 
@@ -151,34 +118,31 @@ export function Quiz() {
     return <p className="text-mtg-white-500">No questions found.</p>;
   }
 
-  if (finished) {
+  if (quiz && "completed" in quiz && quiz.completed) {
     return (
       <ResultsScreen
-        results={resultsRef.current}
+        results={(quiz as { results: Result[] }).results ?? []}
         total={questions.length}
-        score={score}
+        score={(quiz as { score: number }).score ?? 0}
       />
     );
   }
 
-  const current = questions[index];
   if (!current) return null;
-
-  const isPending = submit.isPending || !!feedback;
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-mtg-white-100 mb-1">
-        Quiz #{id}
+        Quiz #{id.slice(0, 8)}
       </h1>
       <p className="text-mtg-white-500 text-sm mb-6">
-        Question {index + 1} of {questions.length}
+        Question {currentIndex + 1} of {questions.length}
         {quiz &&
           "seed" in quiz &&
-          ` — Seed: ${(quiz as unknown as { seed: number }).seed}`}
+          ` — Seed: ${(quiz as { seed: number }).seed}`}
       </p>
 
-      <Card className="mb-6">
+      <Card key={currentIndex} className="mb-6" style={{ animation: 'fade-in 750ms ease-out' }}>
         <img
           src={current.imageUrl}
           alt="Card"
@@ -190,7 +154,7 @@ export function Quiz() {
         onSubmit={(e) => {
           e.preventDefault();
           if (isPending) return;
-          submit.mutate(current.id);
+          submit.mutate();
         }}
         className="flex gap-2"
       >
@@ -207,8 +171,13 @@ export function Quiz() {
               if (suggestions.length > 0) setOpen(true);
             }}
             onKeyDown={(e) => {
+              if (e.key === "Enter" && e.ctrlKey) {
+                e.preventDefault();
+                if (!submit.isPending && answer.trim()) submit.mutate();
+                return;
+              }
               if (!open || suggestions.length === 0) return;
-              if (e.key === "ArrowDown") {
+              if (e.key === "ArrowDown" || e.key === "Tab") {
                 e.preventDefault();
                 setHighlightIndex((i) => Math.min(i + 1, suggestions.length - 1));
               } else if (e.key === "ArrowUp") {
@@ -224,7 +193,7 @@ export function Quiz() {
             }}
             placeholder="Card name…"
             autoFocus
-            disabled={isPending}
+            disabled={submit.isPending}
             className="w-full"
           />
           {open && suggestions.length > 0 && (
@@ -255,18 +224,24 @@ export function Quiz() {
           type="button"
           variant="secondary"
           disabled={isPending}
-          onClick={skip}
+          onClick={() => {
+            submit.mutate();
+          }}
         >
           Skip
         </Button>
       </form>
 
       {feedback?.kind === "correct" && (
-        <p className="text-mtg-green-400 mt-3 font-medium">Correct!</p>
+        <p className="text-mtg-green-400 mt-3 font-medium">
+          Correct!{" "}
+          <span className="text-mtg-green-300">{feedback.correctAnswer}</span>
+        </p>
       )}
       {feedback?.kind === "wrong" && (
         <p className="text-mtg-red-400 mt-3 font-medium">
-          Wrong — it was <span className="text-mtg-white-300">{feedback.correctAnswer}</span>
+          Wrong — it was{" "}
+          <span className="text-mtg-white-300">{feedback.correctAnswer}</span>
         </p>
       )}
 
@@ -288,26 +263,26 @@ function ResultsScreen({
 }) {
   const [visible, setVisible] = useState(0);
   const [displayScore, setDisplayScore] = useState(0);
+  const [modal, setModal] = useState<string | null>(null);
 
+  // Reset animation state when the results screen mounts
   useEffect(() => {
     setVisible(0);
     setDisplayScore(0);
   }, []);
 
+  // Reveal result cards one at a time with a 100ms stagger
   useEffect(() => {
     if (visible < results.length) {
-      const timer = setTimeout(() => {
-        setVisible((v) => v + 1);
-      }, 300);
+      const timer = setTimeout(() => setVisible((v) => v + 1), 100);
       return () => clearTimeout(timer);
     }
   }, [visible, results.length]);
 
+  // Animate the score counter counting up from 0 to the final score
   useEffect(() => {
     if (displayScore < score) {
-      const timer = setTimeout(() => {
-        setDisplayScore((s) => s + 1);
-      }, 80);
+      const timer = setTimeout(() => setDisplayScore((s) => s + 1), 80);
       return () => clearTimeout(timer);
     }
   }, [displayScore, score]);
@@ -347,13 +322,13 @@ function ResultsScreen({
               className={`flex flex-col items-center transition-all duration-300 ${
                 show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
-              style={{ transitionDelay: show ? "0ms" : "0ms" }}
             >
               <div className="relative w-full">
                 <img
                   src={r.imageUrl}
                   alt=""
-                  className="w-full rounded-(--radius-sm) block"
+                  className="w-full rounded-(--radius-sm) block cursor-pointer hover:ring-2 hover:ring-mtg-green-500 transition-all"
+                  onClick={() => setModal(r.imageUrl)}
                 />
                 <span
                   className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -377,6 +352,20 @@ function ResultsScreen({
           );
         })}
       </div>
+
+      {modal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setModal(null)}
+        >
+          <img
+            src={modal}
+            alt=""
+            className="max-h-[90vh] max-w-full rounded-(--radius) shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

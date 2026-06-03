@@ -107,6 +107,7 @@ async function seed() {
   console.log(`Seeding ${alphaBetaCards.length} cards from manifest...`);
   const cardData = alphaBetaCards.map((entry) => ({
     title: entry.name,
+    file: entry.file,
     set: (entry.set === 'lea' ? 'ALPHA' : 'BETA') as typeof cards.$inferSelect.set,
     year: 1993,
   }));
@@ -131,6 +132,7 @@ async function seed() {
     .insert(quizzes)
     .values({
       seed: seedValue,
+      questionCount,
       completed: false,
       userId: user.id,
     })
@@ -142,7 +144,7 @@ async function seed() {
   console.log(
     `Using image static base URL: ${process.env.IMAGE_STATIC_BASE_URL ?? defaultImageStaticBaseUrl}`,
   );
-  const questionData: { imageUrl: string; answer: string; quizId: number }[] =
+  const questionData: { imageUrl: string; answer: string; quizId: string }[] =
     quizCards.map((card) => ({
       imageUrl: imageUrlFor(card.file),
       answer: card.name,

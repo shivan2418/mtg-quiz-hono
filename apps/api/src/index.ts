@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from './db';
-import { questions } from './db/schema';
-import { eq } from 'drizzle-orm';
+import { questions, quizzes } from './db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { auth } from './routes/auth';
 import { quizzesRoute as quizRoutes } from './routes/quizzes';
 import { autocomplete, autocompleteFuzzy } from './db/queries';
@@ -17,27 +17,64 @@ const app = new Hono()
   })
   .post('/answer', async (c) => {
     const { quizId, questionId, answer } = await c.req.json<{
-      quizId: number;
+      quizId: string;
       questionId: number;
       answer: string;
     }>();
 
-    const rows = await db
+    const qRows = await db
       .select()
       .from(questions)
       .where(eq(questions.id, questionId));
-    const question = rows[0];
+    const question = qRows[0];
     if (!question || question.quizId !== quizId) {
       return c.json({ error: 'Question not found' }, 404);
     }
 
-    const correct =
-      question.answer.toLowerCase().trim() === answer.toLowerCase().trim();
+    const check = await db.execute(
+      sql`SELECT regexp_replace(lower(immutable_unaccent(${question.answer})), '[ -]', '', 'g') = regexp_replace(lower(immutable_unaccent(${answer})), '[ -]', '', 'g') AS correct`,
+    );
+    const correct = (check.rows[0] as { correct: boolean }).correct;
 
-    if (correct) {
-      return c.json({ correct: true });
-    }
-    return c.json({ correct: false, correctAnswer: question.answer });
+    const quizRows = await db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.id, quizId));
+    const quiz = quizRows[0];
+    if (!quiz) return c.json({ error: 'Quiz not found' }, 404);
+
+    const result = {
+      questionIndex: quiz.currentIndex,
+      guess: answer || null,
+      correct,
+      correctAnswer: correct ? answer : question.answer,
+      imageUrl: question.imageUrl,
+    };
+
+    const nextIndex = quiz.currentIndex + 1;
+    const nextScore = (quiz.score ?? 0) + (correct ? 1 : 0);
+    const nextResults = [...(quiz.results ?? []), result];
+    const isComplete = nextIndex >= quiz.questionCount;
+
+    await db
+      .update(quizzes)
+      .set({
+        currentIndex: nextIndex,
+        score: nextScore,
+        results: nextResults,
+        completed: isComplete,
+      })
+      .where(eq(quizzes.id, quizId));
+
+    const response: Record<string, unknown> = { correct, correctAnswer: question.answer };
+    response.state = {
+      currentIndex: nextIndex,
+      score: nextScore,
+      completed: isComplete,
+      results: nextResults,
+    };
+
+    return c.json(response);
   });
 
 export default app;

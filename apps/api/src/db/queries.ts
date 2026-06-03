@@ -3,7 +3,7 @@ import { cards } from './schema';
 import { asc, sql, desc } from 'drizzle-orm';
 
 function normalize(q: string): string {
-  return q.toLowerCase().trim();
+  return q.toLowerCase().trim().replace(/[ -]/g, '');
 }
 
 export async function autocomplete(qRaw: string): Promise<string[]> {
@@ -15,10 +15,10 @@ export async function autocomplete(qRaw: string): Promise<string[]> {
       title: cards.title,
     })
     .from(cards)
-    .where(sql`${cards.titleNorm} LIKE ${'%' + q + '%'}`)
+    .where(sql`${cards.titleCompact} LIKE ${'%' + q + '%'}`)
     .groupBy(cards.title)
     .orderBy(
-      desc(sql`bool_or(${cards.titleNorm} LIKE ${q + '%'})`),
+      desc(sql`bool_or(${cards.titleCompact} LIKE ${q + '%'})`),
       asc(sql`min(length(${cards.title}))`),
       asc(cards.title),
     )
@@ -36,11 +36,11 @@ export async function autocompleteFuzzy(qRaw: string): Promise<string[]> {
       title: cards.title,
     })
     .from(cards)
-    .where(sql`${cards.titleNorm} % ${q}`)
+    .where(sql`${cards.titleCompact} % ${q}`)
     .groupBy(cards.title)
     .orderBy(
-      desc(sql`max(similarity(${cards.titleNorm}, ${q}))`),
-      desc(sql`bool_or(${cards.titleNorm} LIKE ${q + '%'})`),
+      desc(sql`max(similarity(${cards.titleCompact}, ${q}))`),
+      desc(sql`bool_or(${cards.titleCompact} LIKE ${q + '%'})`),
       asc(sql`min(length(${cards.title}))`),
       asc(cards.title),
     )

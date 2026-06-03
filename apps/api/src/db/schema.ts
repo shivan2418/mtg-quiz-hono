@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, text, boolean, integer, pgEnum, index } from 'drizzle-orm/pg-core';
+import { pgTable, serial, timestamp, text, boolean, integer, pgEnum, index, uuid, jsonb } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
 // --- Enums ---
@@ -23,7 +23,7 @@ export const setEnum = pgEnum('Set', [
 export const users = pgTable('User', {
   id: serial('id').primaryKey(),
   createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(), // Note: Handle auto-updating via DB triggers or application level
+  updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   email: text('email').unique().notNull(),
   name: text('name'),
   password: text('password').notNull(),
@@ -32,15 +32,22 @@ export const users = pgTable('User', {
 
 // Quiz Table
 export const quizzes = pgTable('Quiz', {
-  id: serial('id').primaryKey(),
+  id: uuid('id').primaryKey().defaultRandom(),
   createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   seed: integer('seed').notNull(),
+  questionCount: integer('questionCount').default(30).notNull(),
+  currentIndex: integer('currentIndex').default(0).notNull(),
   completed: boolean('completed').default(false).notNull(),
-  score: integer('score'),
-  userId: integer('userId')
-    .notNull()
-    .references(() => users.id, { onDelete: 'restrict', onUpdate: 'cascade' }),
+  score: integer('score').default(0),
+  results: jsonb('results')
+    .$type<{ questionIndex: number; guess: string | null; correct: boolean; correctAnswer: string; imageUrl: string }[]>()
+    .default(sql`'[]'::jsonb`)
+    .notNull(),
+  userId: integer('userId').references(() => users.id, {
+    onDelete: 'restrict',
+    onUpdate: 'cascade',
+  }),
 });
 
 // Question Table
@@ -50,7 +57,7 @@ export const questions = pgTable('Question', {
   updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   imageUrl: text('imageUrl').notNull(),
   answer: text('answer').notNull(),
-  quizId: integer('quizId')
+  quizId: uuid('quizId')
     .notNull()
     .references(() => quizzes.id, { onDelete: 'restrict', onUpdate: 'cascade' }),
 });
@@ -61,13 +68,18 @@ export const cards = pgTable('Card', {
   createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   title: text('title').notNull(),
+  file: text('file').notNull().default(''),
   set: setEnum('set').notNull(),
   year: integer('year').notNull(),
   titleNorm: text('title_norm').generatedAlwaysAs(
     (): any => sql`lower(immutable_unaccent(${cards.title}))`,
   ),
+  titleCompact: text('title_compact').generatedAlwaysAs(
+    (): any => sql`regexp_replace(lower(immutable_unaccent(${cards.title})), '[ -]', '', 'g')`,
+  ),
 }, (t) => [
   index('cards_title_norm_trgm').using('gin', t.titleNorm.op('gin_trgm_ops')),
+  index('cards_title_compact_trgm').using('gin', t.titleCompact.op('gin_trgm_ops')),
 ]);
 
 // --- Relations ---
