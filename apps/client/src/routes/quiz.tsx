@@ -130,6 +130,7 @@ export function Quiz() {
         results={(quiz as { results: Result[] }).results ?? []}
         total={questions.length}
         score={(quiz as { score: number }).score ?? 0}
+        quizId={id}
       />
     );
   }
@@ -262,10 +263,12 @@ function ResultsScreen({
   results,
   total,
   score,
+  quizId,
 }: {
   results: Result[];
   total: number;
   score: number;
+  quizId: string;
 }) {
   const [visible, setVisible] = useState(0);
   const [displayScore, setDisplayScore] = useState(0);
@@ -276,6 +279,15 @@ function ResultsScreen({
     setVisible(0);
     setDisplayScore(0);
   }, []);
+
+  const { data: comparison } = useQuery({
+    queryKey: ["comparison", quizId],
+    queryFn: async () => {
+      const res = await client.comparison.$post({ json: { quizId } });
+      return res.json();
+    },
+    enabled: !!quizId,
+  });
 
   // Reveal result cards one at a time with a 100ms stagger
   useEffect(() => {
@@ -299,6 +311,28 @@ function ResultsScreen({
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-mtg-white-100">Results</h2>
+            {comparison && !("firstAttempt" in comparison) && !("notCompleted" in comparison) && (
+              <p className="text-mtg-white-500 text-sm mt-0.5">
+                Rank{" "}
+                <span className="text-mtg-white-200 font-medium">
+                  #{(comparison as { rank: number }).rank}
+                </span>{" "}
+                of{" "}
+                <span className="text-mtg-white-200 font-medium">
+                  {(comparison as { total: number }).total}
+                </span>{" "}
+                {(comparison as { formatName: string }).formatName} attempts
+                {" · "}Better than{" "}
+                <span className="text-mtg-white-200 font-medium">
+                  {(comparison as { percentile: number }).percentile}%
+                </span>
+              </p>
+            )}
+            {comparison && "firstAttempt" in comparison && (
+              <p className="text-mtg-white-500 text-sm mt-0.5">
+                First completed {(comparison as { formatName: string }).formatName} attempt!
+              </p>
+            )}
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold text-mtg-green-400 leading-none">

@@ -29,6 +29,13 @@
       "when": 1748983500000,
       "tag": "0003_fluffy_spider",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1749500000000,
+      "tag": "0004_quick_quicksilver",
+      "breakpoints": true
     }
   ]
 }

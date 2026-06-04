@@ -1,9 +1,8 @@
 import { Hono } from 'hono';
 import { db } from '../db';
-import { quizzes, questions, cards } from '../db/schema';
-import { eq, sql, and, isNotNull } from 'drizzle-orm';
+import { quizzes, questions, cards, quizFormats, quizFormatSets } from '../db/schema';
+import { eq, sql, and, isNotNull, desc } from 'drizzle-orm';
 import { resolveUserId } from '../auth';
-import { getFormat } from '../db/formats';
 
 export const quizzesRoute = new Hono()
   .get('/', async (c) => {
@@ -24,7 +23,7 @@ export const quizzesRoute = new Hono()
       query = query.where(eq(quizzes.format, format)) as typeof query;
     }
 
-    const result = await query;
+    const result = await query.orderBy(desc(quizzes.createdAt));
     return c.json(result);
   })
   .get('/:id', async (c) => {
@@ -63,7 +62,19 @@ export const quizzesRoute = new Hono()
     }>();
 
     const seed = rawSeed ?? Math.floor(Math.random() * 100000);
-    const codes = setCodes ?? getFormat(formatId ?? 'classic')?.setCodes ?? ['lea', 'leb'];
+
+    let codes: string[];
+    if (setCodes && setCodes.length > 0) {
+      codes = setCodes;
+    } else {
+      const setRows = await db
+        .select({ setCode: quizFormatSets.setCode })
+        .from(quizFormatSets)
+        .where(eq(quizFormatSets.formatId, formatId ?? 'classic'))
+        .orderBy(quizFormatSets.position);
+      codes = setRows.map((s) => s.setCode);
+      if (codes.length === 0) codes = ['lea', 'leb'];
+    }
 
     // DISTINCT ON (title) ensures each card name appears only once (one artwork)
     const query = sql`

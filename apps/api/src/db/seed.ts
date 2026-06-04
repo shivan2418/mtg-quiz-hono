@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { db } from './index';
-import { cards, users } from './schema';
+import { cards, users, quizFormats, quizFormatSets } from './schema';
 import { hash } from 'bcryptjs';
 import { formats, allSetCodes } from './formats';
 
@@ -57,6 +57,24 @@ async function seed() {
 
   console.log(`Sets found: ${[...setsFound].sort().join(', ')}`);
   console.log(`Unique cards to seed: ${cardData.length}`);
+
+  // --- Formats ---
+  console.log('\nSeeding formats...');
+  for (const [fi, format] of formats.entries()) {
+    const enabled = format.id === 'standard' || format.id === 'classic';
+    await db
+      .insert(quizFormats)
+      .values({ id: format.id, name: format.name, description: format.description, enabled, sortOrder: fi })
+      .onConflictDoUpdate({ target: quizFormats.id, set: { name: format.name, description: format.description, enabled, sortOrder: fi } });
+
+    for (const [si, code] of format.setCodes.entries()) {
+      await db
+        .insert(quizFormatSets)
+        .values({ formatId: format.id, setCode: code, position: si })
+        .onConflictDoNothing();
+    }
+  }
+  console.log(`Seeded ${formats.length} formats`);
 
   // --- Cards ---
   console.log(`\nInserting ${cardData.length} cards...`);

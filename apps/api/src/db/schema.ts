@@ -14,6 +14,26 @@ export const users = pgTable('User', {
   admin: boolean('admin').default(false).notNull(),
 });
 
+// Quiz Format Table
+export const quizFormats = pgTable('QuizFormat', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  enabled: boolean('enabled').default(true).notNull(),
+  sortOrder: integer('sortOrder').default(0).notNull(),
+});
+
+// Quiz Format Sets (join table)
+export const quizFormatSets = pgTable('QuizFormatSet', {
+  id: serial('id').primaryKey(),
+  formatId: text('formatId').notNull().references(() => quizFormats.id, {
+    onDelete: 'cascade',
+    onUpdate: 'cascade',
+  }),
+  setCode: text('setCode').notNull(),
+  position: integer('position').default(0).notNull(),
+});
+
 // Quiz Table
 export const quizzes = pgTable('Quiz', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -96,5 +116,18 @@ export const questionsRelations = relations(questions, ({ one }) => ({
   card: one(cards, {
     fields: [questions.cardId],
     references: [cards.id],
+  }),
+}));
+
+// Quiz Format Relations
+export const quizFormatsRelations = relations(quizFormats, ({ many }) => ({
+  sets: many(quizFormatSets),
+}));
+
+// Quiz Format Sets Relations
+export const quizFormatSetsRelations = relations(quizFormatSets, ({ one }) => ({
+  format: one(quizFormats, {
+    fields: [quizFormatSets.formatId],
+    references: [quizFormats.id],
   }),
 }));
