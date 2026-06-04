@@ -299,13 +299,6 @@ function ResultsScreen({
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-mtg-white-100">Results</h2>
-            <p className="text-mtg-white-500 text-sm">
-              {score === total
-                ? "Perfect!"
-                : score >= total / 2
-                  ? "Well played!"
-                  : "Keep practicing!"}
-            </p>
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold text-mtg-green-400 leading-none">
