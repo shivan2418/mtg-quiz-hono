@@ -35,7 +35,11 @@ export const quizzesRoute = new Hono()
       .where(eq(quizzes.id, id));
     const quiz = rows[0];
     if (!quiz) return c.json({ error: 'Not found' }, 404);
-    return c.json(quiz);
+    const stripped = {
+      ...quiz,
+      results: (quiz.results ?? []).map(({ cardId: _, ...r }: Record<string, unknown>) => r),
+    };
+    return c.json(stripped);
   })
   .get('/:id/questions', async (c) => {
     const id = c.req.param('id');
@@ -97,6 +101,7 @@ export const quizzesRoute = new Hono()
           : `${imageBaseUrl}/${card.file}`,
         answer: card.title,
         quizId: quiz.id,
+        cardId: card.id,
       })),
     );
 

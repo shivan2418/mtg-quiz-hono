@@ -26,7 +26,7 @@ export const quizzes = pgTable('Quiz', {
   completedAt: timestamp('completedAt', { mode: 'date' }),
   score: integer('score').default(0),
   results: jsonb('results')
-    .$type<{ questionIndex: number; guess: string | null; correct: boolean; correctAnswer: string; imageUrl: string }[]>()
+    .$type<{ questionIndex: number; guess: string | null; correct: boolean; correctAnswer: string; imageUrl: string; cardId: number | null }[]>()
     .default(sql`'[]'::jsonb`)
     .notNull(),
   userId: integer('userId').references(() => users.id, {
@@ -45,6 +45,10 @@ export const questions = pgTable('Question', {
   quizId: uuid('quizId')
     .notNull()
     .references(() => quizzes.id, { onDelete: 'restrict', onUpdate: 'cascade' }),
+  cardId: integer('cardId').references(() => cards.id, {
+    onDelete: 'restrict',
+    onUpdate: 'cascade',
+  }),
 });
 
 // Card Table
@@ -88,5 +92,9 @@ export const questionsRelations = relations(questions, ({ one }) => ({
   quiz: one(quizzes, {
     fields: [questions.quizId],
     references: [quizzes.id],
+  }),
+  card: one(cards, {
+    fields: [questions.cardId],
+    references: [cards.id],
   }),
 }));

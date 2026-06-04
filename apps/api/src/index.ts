@@ -63,6 +63,7 @@ const app = new Hono()
       correct,
       correctAnswer: correct ? answer : question.answer,
       imageUrl: question.imageUrl,
+      cardId: question.cardId,
     };
 
     const nextIndex = quiz.currentIndex + 1;
@@ -85,7 +86,7 @@ const app = new Hono()
       currentIndex: nextIndex,
       score: nextScore,
       completedAt: isComplete ? new Date() : null,
-      results: nextResults,
+      results: nextResults.map(({ cardId: _, ...r }) => r),
     };
 
     return c.json(response);
