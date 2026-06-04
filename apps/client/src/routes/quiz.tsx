@@ -76,20 +76,24 @@ export function Quiz() {
       });
       return { data: await res.json(), question: q };
     },
-    onSuccess: ({ data }) => {
+    onSuccess: ({ data }, variables) => {
+      const effectiveAnswer = variables ?? answer;
+      const wasSkip = !effectiveAnswer.trim();
       setOpen(false);
       refetchQuiz();
-      const d = data as { correct?: boolean; correctAnswer?: string };
-      const cardName = d.correctAnswer ?? "";
-      if (d.correct) {
-        setFeedback({ kind: "correct", correctAnswer: cardName });
-      } else {
-        setFeedback({ kind: "wrong", correctAnswer: cardName });
+      if (!wasSkip) {
+        const d = data as { correct?: boolean; correctAnswer?: string };
+        const cardName = d.correctAnswer ?? "";
+        if (d.correct) {
+          setFeedback({ kind: "correct", correctAnswer: cardName });
+        } else {
+          setFeedback({ kind: "wrong", correctAnswer: cardName });
+        }
+        setTimeout(() => {
+          setFeedback(null);
+        }, 1500);
       }
       setAnswer("");
-      setTimeout(() => {
-        setFeedback(null);
-      }, 1500);
     },
   });
 
@@ -227,7 +231,7 @@ export function Quiz() {
           variant="secondary"
           disabled={isPending}
           onClick={() => {
-            submit.mutate(undefined);
+            submit.mutate("");
           }}
         >
           Skip
