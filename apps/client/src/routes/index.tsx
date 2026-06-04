@@ -48,7 +48,7 @@ export function Home() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-mtg-white-100">Quizzes</h1>
-        <Button onClick={() => navigate("/create")}>
+        <Button onClick={() => navigate("/newQuiz")}>
           New Quiz
         </Button>
       </div>

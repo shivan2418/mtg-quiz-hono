@@ -5,7 +5,7 @@ export interface QuizFormat {
   setCodes: string[];
 }
 
-export const formats: QuizFormat[] = [
+const eraFormats: QuizFormat[] = [
   {
     id: 'classic',
     name: 'Classic (93–94)',
@@ -56,11 +56,21 @@ export const formats: QuizFormat[] = [
   },
 ];
 
-export function getFormat(id: string): QuizFormat | undefined {
-  return formats.find((f) => f.id === id);
+/** All set codes across every era format */
+export function allSetCodes(): string[] {
+  return [...new Set(eraFormats.flatMap((f) => f.setCodes))];
 }
 
-/** All set codes across every format */
-export function allSetCodes(): string[] {
-  return [...new Set(formats.flatMap((f) => f.setCodes))];
+export const formats: QuizFormat[] = [
+  {
+    id: 'standard',
+    name: 'Standard',
+    description: `All ${allSetCodes().length} sets — the full mtg-quiz experience`,
+    setCodes: allSetCodes(),
+  },
+  ...eraFormats,
+];
+
+export function getFormat(id: string): QuizFormat | undefined {
+  return formats.find((f) => f.id === id);
 }

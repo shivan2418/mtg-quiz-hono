@@ -14,11 +14,32 @@ const setsData = JSON.parse(readFileSync(setsPath, 'utf8')).sets as {
   code: string; name: string; year: string; totalCards: number; uniqueArtwork: number;
 }[];
 
+let formatCountsCache: Record<string, number> | null = null;
+
+async function getFormatCounts(): Promise<Record<string, number>> {
+  if (formatCountsCache) return formatCountsCache;
+  const results: Record<string, number> = {};
+  for (const format of formats) {
+    const row = await db.execute<{ unique_artwork: number }>(
+      sql`SELECT COUNT(DISTINCT "Card"."title")::int AS unique_artwork FROM "Card" WHERE "Card"."set" IN (${sql.join(format.setCodes.map((c: string) => sql`${c}`), sql`, `)})`,
+    );
+    results[format.id] = row.rows[0]?.unique_artwork ?? 0;
+  }
+  formatCountsCache = results;
+  return results;
+}
+
 const app = new Hono()
   .route('/auth', auth)
   .route('/quizzes', quizRoutes)
-  .get('/formats', (c) => {
-    return c.json(formats);
+  .get('/formats', async (c) => {
+    const counts = await getFormatCounts();
+    const setNameByCode = new Map(setsData.map((s) => [s.code, s.name]));
+    return c.json(formats.map((f) => ({
+      ...f,
+      uniqueArtwork: counts[f.id] ?? 0,
+      lastSet: (setNameByCode.get(f.setCodes[f.setCodes.length - 1]!) ?? f.setCodes[f.setCodes.length - 1]) as string,
+    })));
   })
   .get('/sets', (c) => {
     return c.json(setsData);
