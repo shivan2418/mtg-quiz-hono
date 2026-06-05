@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, text, boolean, integer, index, uuid, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, timestamp, text, boolean, integer, index, uuid, jsonb, unique } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
 // --- Tables ---
@@ -32,7 +32,9 @@ export const quizFormatSets = pgTable('QuizFormatSet', {
   }),
   setCode: text('setCode').notNull(),
   position: integer('position').default(0).notNull(),
-});
+}, (t) => [
+  unique('quiz_format_set_format_setcode').on(t.formatId, t.setCode),
+]);
 
 // Quiz Table
 export const quizzes = pgTable('Quiz', {

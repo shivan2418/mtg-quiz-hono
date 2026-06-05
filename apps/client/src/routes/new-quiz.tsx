@@ -12,6 +12,7 @@ interface FormatInfo {
   setCodes: string[];
   uniqueArtwork: number;
   lastSet: string;
+  samples: string[];
 }
 
 export function NewQuiz() {
@@ -65,36 +66,43 @@ export function NewQuiz() {
         <p className="text-mtg-white-500 mt-1">Choose a format to start a quiz</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {visible.map((f: FormatInfo) => (
           <button
             key={f.id}
             onClick={() => createQuiz.mutate(f.id)}
             disabled={createQuiz.isPending}
-            className={`flex flex-col gap-2 p-5 rounded-(--radius) border text-left transition-all cursor-pointer ${
+            className={`flex flex-col rounded-(--radius) border text-left transition-all cursor-pointer overflow-hidden ${
               f.id === "standard"
-                ? "border-mtg-white-600 bg-mtg-white-950/40 hover:bg-mtg-white-950/70"
-                : "border-mtg-white-800 hover:border-mtg-white-700 bg-mtg-white-950/60"
+                ? "border-mtg-white-600 bg-mtg-white-950/40 hover:bg-mtg-white-950/70 hover:border-mtg-green-500"
+                : "border-mtg-white-800 hover:border-mtg-green-500 bg-mtg-white-950/60"
             }`}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-center gap-3 p-4 bg-mtg-white-950/80">
+              {f.samples?.slice(0, 2).map((url, i) => (
+                <img
+                  key={i}
+                  src={url}
+                  alt=""
+                  className="w-[45%] rounded-(--radius) shadow-lg border border-mtg-white-700"
+                />
+              ))}
+            </div>
+            <div className="p-4 flex flex-col gap-2">
               <h2 className="text-mtg-white-100 font-semibold text-lg">
                 {f.name}
               </h2>
-              <span className="text-mtg-white-500 text-sm">
-                {f.uniqueArtwork.toLocaleString()} artworks
-              </span>
-            </div>
-            <p className="text-mtg-white-500 text-sm leading-relaxed">
-              {f.id === "standard" && f.lastSet ? `Alpha through ${f.lastSet}` : f.description}
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-mtg-white-600 text-xs">
-                {f.setCodes.length} set{f.setCodes.length > 1 ? "s" : ""}
-              </span>
-              {createQuiz.isPending && (
-                <span className="text-mtg-green-400 text-xs">Creating…</span>
-              )}
+              <p className="text-mtg-white-500 text-sm leading-relaxed">
+                {f.id === "standard" && f.lastSet ? `Alpha through ${f.lastSet}` : f.description}
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-mtg-white-600 text-xs">
+                  {f.setCodes.length} sets · {f.uniqueArtwork.toLocaleString()} artworks
+                </span>
+                {createQuiz.isPending && (
+                  <span className="text-mtg-green-400 text-xs">Creating…</span>
+                )}
+              </div>
             </div>
           </button>
         ))}

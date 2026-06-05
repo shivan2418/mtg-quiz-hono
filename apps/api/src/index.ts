@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from './db';
-import { questions, quizzes, quizFormatSets, quizFormats } from './db/schema';
+import { questions, quizzes, quizFormatSets, quizFormats, cards } from './db/schema';
 import { eq, sql, and, isNotNull, desc, count, avg } from 'drizzle-orm';
 import { auth } from './routes/auth';
 import { quizzesRoute as quizRoutes } from './routes/quizzes';
@@ -58,7 +58,36 @@ const app = new Hono()
         .orderBy(quizFormatSets.position);
       const setCodes = setRows.map((s) => s.setCode);
       const lastSet = setNameByCode.get(setCodes[setCodes.length - 1]!) ?? setCodes[setCodes.length - 1]!;
-      return { ...f, setCodes, uniqueArtwork: counts[f.id] ?? 0, lastSet };
+
+      const iconicCards: Record<string, string[]> = {
+        standard: ['Tarmogoyf', 'Dark Confidant'],
+        classic: ['Black Lotus', 'Shivan Dragon'],
+      };
+
+      const titles = iconicCards[f.id] ?? [];
+      let sampleRows: { file: string }[];
+      if (titles.length > 0) {
+        sampleRows = (await db.execute<{ file: string }>(
+          sql`SELECT DISTINCT ON ("Card"."title") "file" FROM "Card" WHERE "Card"."title" IN (${sql.join(titles.map((t: string) => sql`${t}`), sql`, `)}) AND "Card"."set" IN (${sql.join(setCodes.map((c: string) => sql`${c}`), sql`, `)})`,
+        )).rows;
+      } else {
+        sampleRows = [];
+      }
+
+      const imageBaseUrl = (process.env.IMAGE_STATIC_BASE_URL ?? '/art-crops').replace(/\/+$/, '');
+      const samples = sampleRows.map((r) =>
+        r.file.startsWith('http') ? r.file : `${imageBaseUrl}/${r.file}`,
+      );
+      if (samples.length < 2) {
+        const fallback = await db.execute<{ file: string }>(
+          sql`SELECT "file" FROM (SELECT DISTINCT ON ("Card"."title") "Card"."file" FROM "Card" WHERE "Card"."set" IN (${sql.join(setCodes.map((c: string) => sql`${c}`), sql`, `)}) ORDER BY "Card"."title") sub ORDER BY RANDOM() LIMIT ${sql.raw(String(2 - samples.length))}`,
+        );
+        samples.push(...fallback.rows.map((r) =>
+          r.file.startsWith('http') ? r.file : `${imageBaseUrl}/${r.file}`,
+        ));
+      }
+
+      return { ...f, setCodes, uniqueArtwork: counts[f.id] ?? 0, lastSet, samples };
     }));
     return c.json(result);
   })

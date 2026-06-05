@@ -1,20 +1,67 @@
 services:
   db:
     image: postgres:17-alpine
-    container_name: mtg-quiz-postgres
+    container_name: mtg-quiz-db
+    ports:
+      - "5001:5432"
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: mypassword
-    ports:
-      - "5001:5432"
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mypassword}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./db-init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: mtg-quiz-api
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-mypassword}@db:5432/postgres
+      JWT_SECRET: ${JWT_SECRET:-changeme-in-production}
+      IMAGE_STATIC_BASE_URL: ${IMAGE_STATIC_BASE_URL:-/art-crops}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data:ro
+
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: mtg-quiz-client
+    ports:
+      - "${PORT:-80}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    volumes:
+      - ./data/art-crops:/data/art-crops:ro
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: mtg-quiz-seed
+    command: bun run apps/api/src/db/seed.ts
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-mypassword}@db:5432/postgres
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data:ro
+    profiles:
+      - seed
 
 volumes:
   postgres-data:

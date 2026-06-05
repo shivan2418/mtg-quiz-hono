@@ -71,7 +71,7 @@ async function seed() {
       await db
         .insert(quizFormatSets)
         .values({ formatId: format.id, setCode: code, position: si })
-        .onConflictDoNothing();
+        .onConflictDoNothing({ target: [quizFormatSets.formatId, quizFormatSets.setCode] });
     }
   }
   console.log(`Seeded ${formats.length} formats`);
@@ -90,11 +90,13 @@ async function seed() {
       password: await hash('admin123', 10),
       admin: true,
     })
+    .onConflictDoNothing()
     .returning();
-  if (!user) throw new Error('Failed to create user');
-
-  // --- Sample Quiz ---
-  console.log(`User created: ${user.email}`);
+  if (!user) {
+    console.log('User already exists, skipping');
+  } else {
+    console.log(`User created: ${user.email}`);
+  }
   console.log('Seed complete.');
   process.exit(0);
 }
