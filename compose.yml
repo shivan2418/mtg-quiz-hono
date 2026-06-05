@@ -1,9 +1,7 @@
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:17.6-alpine
     container_name: mtg-quiz-db
-    ports:
-      - "5001:5432"
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
@@ -46,22 +44,6 @@ services:
     restart: unless-stopped
     volumes:
       - ./data/art-crops:/data/art-crops:ro
-
-  seed:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    container_name: mtg-quiz-seed
-    command: bun run apps/api/src/db/seed.ts
-    environment:
-      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-mypassword}@db:5432/postgres
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./data:/app/data:ro
-    profiles:
-      - seed
 
 volumes:
   postgres-data:
