@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.4-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
@@ -17,7 +17,10 @@ COPY packages/ ./packages/
 COPY apps/client/ ./apps/client/
 COPY apps/api/ ./apps/api/
 
-RUN pnpm --filter client build
+WORKDIR /app/apps/client
+RUN rm -f public/art-crops && mkdir -p public/art-crops
+RUN npx vite build
+WORKDIR /app
 
 FROM caddy:2.10.2-alpine
 COPY --from=build /app/apps/client/dist /usr/share/caddy
